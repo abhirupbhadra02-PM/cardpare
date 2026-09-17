@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cardpare — know which card to use, every time</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F6F6F3; --surface:#FFFFFF; --line:#E7E6E0;
+    --ink:#14161A; --ink-soft:#6B6F76;
+    --accent:#2F5D50; --accent-soft:#E3ECE8;
+    --warn:#A8402F; --warn-soft:#F5E7E3;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:900px;margin:0 auto;}
+  section{padding:64px 24px;}
+  .narrow{max-width:640px;margin:0 auto;}
+
+  nav{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:20px 24px;max-width:900px;margin:0 auto;
+  }
+  .brand{font-family:'Fraunces',serif;font-weight:700;font-size:1.2rem;letter-spacing:-0.015em;}
+  .brand span{color:var(--accent);}
+  .nav-cta{
+    padding:9px 18px;border-radius:8px;background:var(--ink);color:#fff;
+    font-size:0.84rem;font-weight:600;text-decoration:none;
+  }
+
+  /* Hero */
+  .hero{padding:40px 24px 70px;text-align:left;}
+  .hero-inner{max-width:900px;margin:0 auto;}
+  .kicker{
+    font-size:0.78rem;font-weight:600;color:var(--accent);letter-spacing:0.02em;margin-bottom:16px;
+  }
+  h1.display{
+    font-family:'Fraunces',serif;font-weight:500;font-size:clamp(2.1rem, 5vw, 3.4rem);
+    line-height:1.1;letter-spacing:-0.02em;margin:0 0 22px;max-width:16ch;
+  }
+  .hero-sub{font-size:1.05rem;color:var(--ink-soft);line-height:1.6;max-width:52ch;margin:0 0 30px;}
+  .hero-ctas{display:flex;gap:12px;flex-wrap:wrap;}
+  .btn-primary{
+    padding:14px 26px;border-radius:9px;background:var(--ink);color:#fff;
+    font-weight:600;font-size:0.95rem;text-decoration:none;display:inline-block;
+  }
+  .btn-secondary{
+    padding:14px 26px;border-radius:9px;border:1px solid var(--line);color:var(--ink);
+    font-weight:600;font-size:0.95rem;text-decoration:none;display:inline-block;background:var(--surface);
+  }
+
+  /* Ledger visual */
+  .hero-visual{
+    margin-top:56px;background:var(--surface);border:1px solid var(--line);border-radius:16px;
+    padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:14px;
+  }
+  .hv-card{border:1px solid var(--line);border-radius:10px;padding:16px;}
+  .hv-label{font-size:0.68rem;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:8px;}
+  .hv-value{font-family:'IBM Plex Mono',monospace;font-size:1.5rem;font-weight:600;}
+  .hv-value.accent{color:var(--accent);}
+  .hv-value.warn{color:var(--warn);}
+  .hv-sub{font-size:0.76rem;color:var(--ink-soft);margin-top:6px;}
+  @media (max-width:600px){ .hero-visual{grid-template-columns:1fr;} }
+
+  /* Problem */
+  .problem-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:36px;}
+  @media (max-width:640px){ .problem-grid{grid-template-columns:1fr;} }
+  .problem-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:22px;}
+  .problem-card .icon{margin-bottom:14px;}
+  .problem-card h3{font-family:'Fraunces',serif;font-weight:500;font-size:1.05rem;margin:0 0 8px;}
+  .problem-card p{font-size:0.88rem;color:var(--ink-soft);line-height:1.6;margin:0;}
+
+  h2.section-title{
+    font-family:'Fraunces',serif;font-weight:500;font-size:1.7rem;letter-spacing:-0.015em;
+    margin:0 0 12px;max-width:20ch;
+  }
+  .section-sub{color:var(--ink-soft);font-size:0.95rem;line-height:1.6;max-width:56ch;margin:0;}
+
+  /* How it works */
+  .steps{margin-top:40px;display:flex;flex-direction:column;gap:0;}
+  .step{display:flex;gap:20px;padding:22px 0;border-top:1px solid var(--line);}
+  .step:last-child{border-bottom:1px solid var(--line);}
+  .step-num{
+    font-family:'Fraunces',serif;font-size:1.3rem;color:var(--accent);font-weight:500;flex-shrink:0;width:36px;
+  }
+  .step-body h4{margin:0 0 6px;font-size:1rem;font-weight:600;}
+  .step-body p{margin:0;font-size:0.88rem;color:var(--ink-soft);line-height:1.6;max-width:52ch;}
+
+  /* Features */
+  .feature-list{margin-top:36px;display:flex;flex-direction:column;gap:14px;}
+  .feature-row{
+    display:flex;gap:16px;align-items:flex-start;background:var(--surface);
+    border:1px solid var(--line);border-radius:12px;padding:18px 20px;
+  }
+  .feature-icon{
+    width:38px;height:38px;border-radius:9px;background:var(--accent-soft);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .feature-body h4{margin:0 0 4px;font-size:0.94rem;font-weight:600;}
+  .feature-body p{margin:0;font-size:0.85rem;color:var(--ink-soft);line-height:1.55;}
+
+  /* Who it's for */
+  .for-box{
+    background:var(--ink);color:#fff;border-radius:16px;padding:40px 32px;margin-top:40px;
+  }
+  .for-box h2{color:#fff;}
+  .for-box .section-sub{color:#C4C8CE;}
+  .for-list{margin-top:24px;display:flex;flex-direction:column;gap:12px;}
+  .for-item{display:flex;gap:12px;font-size:0.92rem;line-height:1.5;color:#E3E5E8;}
+  .for-item b{color:#fff;}
+
+  /* Waitlist */
+  .waitlist-box{
+    background:var(--surface);border:1px solid var(--line);border-radius:16px;
+    padding:36px 30px;text-align:center;
+  }
+  .waitlist-form{display:flex;gap:10px;max-width:420px;margin:24px auto 0;flex-wrap:wrap;justify-content:center;}
+  .waitlist-form input{
+    flex:1;min-width:200px;padding:13px 15px;border:1px solid var(--line);border-radius:8px;
+    background:var(--bg);font-family:'Inter',sans-serif;font-size:0.92rem;
+  }
+  .waitlist-form button{
+    padding:13px 22px;border:none;border-radius:8px;background:var(--accent);color:#fff;
+    font-weight:600;font-size:0.92rem;cursor:pointer;
+  }
+  .waitlist-note{font-size:0.74rem;color:var(--ink-soft);margin-top:14px;}
+  .waitlist-count{font-family:'IBM Plex Mono',monospace;font-size:0.82rem;color:var(--accent);margin-top:16px;font-weight:600;}
+  .waitlist-success{display:none;color:var(--accent);font-weight:600;font-size:0.92rem;margin-top:20px;}
+
+  footer{padding:32px 24px 50px;text-align:center;}
+  footer p{font-size:0.78rem;color:var(--ink-soft);margin:0;line-height:1.6;}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">Card<span>pare</span></div>
+  <a class="nav-cta" href="app.html">Open the app</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="kicker">FOR PEOPLE WHO ALREADY TRACK THIS IN A SPREADSHEET</div>
+    <h1 class="display">Know which card to use. And catch it when you don't.</h1>
+    <p class="hero-sub">You hold five or six cards. One of them is quietly earning nothing while another sits idle. Cardpare tells you which to use before you pay, and shows you exactly what it cost when you didn't.</p>
+    <div class="hero-ctas">
+      <a class="btn-primary" href="app.html">Try the live prototype</a>
+      <a class="btn-secondary" href="#waitlist">Get early access</a>
+    </div>
+
+    <div class="hero-visual">
+      <div class="hv-card">
+        <div class="hv-label">Earned this month</div>
+        <div class="hv-value accent">₹1,240</div>
+        <div class="hv-sub">Across everything you logged</div>
+      </div>
+      <div class="hv-card">
+        <div class="hv-label">Left on the table</div>
+        <div class="hv-value warn">₹385</div>
+        <div class="hv-sub">One dinner, wrong card</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section>
+  <div class="narrow" style="max-width:900px;">
+    <h2 class="section-title">Rewards you already earn shouldn't need a memory test.</h2>
+    <p class="section-sub">Every card has a different rate, cap, and exclusion — and no one keeps that straight at the register. Most tools track spend after the fact. Almost none tell you if you used the right instrument.</p>
+    <div class="problem-grid">
+      <div class="problem-card">
+        <div class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2F5D50" stroke-width="1.6"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>
+        <h3>Six cards, one memory</h3>
+        <p>Nobody holds every reward rate, cap, and exclusion in their head at checkout. So the default card wins, not the best one.</p>
+      </div>
+      <div class="problem-card">
+        <div class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2F5D50" stroke-width="1.6"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></div>
+        <h3>Tracking without judgment</h3>
+        <p>Passive spend trackers show what you spent. None of them tell you whether you spent it on the right card.</p>
+      </div>
+      <div class="problem-card">
+        <div class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2F5D50" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+        <h3>Points that just sit there</h3>
+        <p>Miles and points expire quietly, or get spent on the first thing you see instead of where they're worth the most.</p>
+      </div>
+      <div class="problem-card">
+        <div class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2F5D50" stroke-width="1.6"><path d="M4 19V5m0 14h16M4 19l5-6 4 3 6-8"/></svg></div>
+        <h3>No plan for the big purchase</h3>
+        <p>A laptop, a trip, an EMI — the moment it matters most, there's no guidance on which card actually pays for it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="narrow" style="max-width:900px;">
+    <h2 class="section-title">How it works</h2>
+    <p class="section-sub">Three habits, not a new app to babysit.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-body"><h4>Plan</h4><p>Pick a category and an amount — get the best card from the ones you actually hold, ranked by what it'll actually earn.</p></div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-body"><h4>Log</h4><p>Note what you actually used, in a few taps. EMI purchases split into the right month automatically.</p></div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-body"><h4>Audit</h4><p>See the gap between what you earned and what your best card would've earned — every month, in plain rupees.</p></div>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div class="step-body"><h4>Redeem</h4><p>A dated reference for what your points and miles are actually worth, and where to spend them.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="narrow" style="max-width:900px;">
+    <h2 class="section-title">What's in it</h2>
+    <div class="feature-list">
+      <div class="feature-row">
+        <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2F5D50" stroke-width="1.8"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg></div>
+        <div class="feature-body"><h4>Dashboard</h4><p>Spend, earnings, and what you missed — one screen, updated as you log.</p></div>
+      </div>
+      <div class="feature-row">
+        <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2F5D50" stroke-width="1.8"><path d="M4 19V5m0 14h16M4 19l5-6 4 3 6-8"/></svg></div>
+        <div class="feature-body"><h4>Future purchase planning</h4><p>Add a trip or a big purchase ahead of time and see which card fits — including whether it'll push you past a fee waiver or milestone tier.</p></div>
+      </div>
+      <div class="feature-row">
+        <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2F5D50" stroke-width="1.8"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>
+        <div class="feature-body"><h4>Monthly budget limit</h4><p>Set a number, watch the bar fill as the month goes, get a clear amber-then-red warning before you're over.</p></div>
+      </div>
+      <div class="feature-row">
+        <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2F5D50" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+        <div class="feature-body"><h4>Redemption guide</h4><p>Fee, forex, transfer partners, and a visible "last verified" date on every card you hold.</p></div>
+      </div>
+      <div class="feature-row">
+        <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2F5D50" stroke-width="1.8"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg></div>
+        <div class="feature-body"><h4>Card requests</h4><p>Don't see your card yet? Request it and upvote existing requests — tells us exactly what to curate next.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="narrow" style="max-width:900px;">
+    <div class="for-box">
+      <h2 class="section-title">Not built for everyone. Built for you, if —</h2>
+      <p class="section-sub">Cardpare is narrow on purpose. It's for people who already care about getting this right, not a mass-market app chasing scale.</p>
+      <div class="for-list">
+        <div class="for-item"><b>You already track this manually</b> — a notes app, a spreadsheet, a mental model of your own wallet.</div>
+        <div class="for-item"><b>You hold 3 or more cards</b> and genuinely can't keep every rate and cap straight in your head.</div>
+        <div class="for-item"><b>You'd rather know you're wrong</b> than not know at all — the audit only works if you're willing to see the gap.</div>
+        <div class="for-item"><b>You're fine with an early tool</b> — data gets more accurate as more people like you use it and flag corrections.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="waitlist">
+  <div class="narrow">
+    <div class="waitlist-box">
+      <h2 class="section-title" style="max-width:none;">Get early access</h2>
+      <p class="section-sub" style="margin:0 auto;">Leave your email and we'll let you know as Cardpare moves past prototype.</p>
+      <div class="waitlist-form">
+        <input type="email" id="wlEmail" placeholder="you@email.com">
+        <button id="wlBtn">Notify me</button>
+      </div>
+      <div class="waitlist-success" id="wlSuccess">You're on the list — thank you.</div>
+      <div class="waitlist-note">On the live site this opens your email app to send us your address directly, so it actually reaches us — nothing is stored on our side yet beyond that email.</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>Cardpare is a planning and audit tool, not a payments app or financial advisor. Card rates shown elsewhere in the product are a hand-curated reference — always confirm current terms with your bank.</p>
+  <p style="margin-top:10px;"><a href="privacy.html" style="color:var(--ink-soft);">Privacy</a> · <a href="terms.html" style="color:var(--ink-soft);">Terms</a></p>
+</footer>
+
+<script>
+const _rawStorage = (typeof window !== 'undefined') ? window.storage : null;
+const hasClaudeStorage = !!(_rawStorage && typeof _rawStorage.get === 'function');
+const storageAdapter = {
+  async get(key, shared){
+    if(hasClaudeStorage) return _rawStorage.get(key, shared);
+    try{ const raw = localStorage.getItem(key); return raw ? {value: raw} : null; }
+    catch(e){ return null; }
+  },
+  async set(key, value, shared){
+    if(hasClaudeStorage) return _rawStorage.set(key, value, shared);
+    try{ localStorage.setItem(key, value); return {value}; }
+    catch(e){ return null; }
+  }
+};
+
+document.getElementById('wlBtn').addEventListener('click', async ()=>{
+  const emailEl = document.getElementById('wlEmail');
+  const email = emailEl.value.trim();
+  if(!email || !email.includes('@')) { emailEl.focus(); return; }
+
+  if(hasClaudeStorage){
+    // Works here because Claude's shared storage is a real cross-user store.
+    try{
+      const res = await storageAdapter.get('cardpare:waitlist', true);
+      let list = res && res.value ? JSON.parse(res.value) : [];
+      if(!list.includes(email)) list.push(email);
+      await storageAdapter.set('cardpare:waitlist', JSON.stringify(list), true);
+    }catch(e){ console.error(e); }
+  } else {
+    // On the real domain there's no shared backend yet — email is the reliable path.
+    // TODO: replace hello@cardpare.com with your real address before launch,
+    // or swap this for a form endpoint once one exists.
+    const subject = encodeURIComponent('Cardpare early access');
+    const body = encodeURIComponent(`Please add me to the Cardpare waitlist.\n\nMy email: ${email}`);
+    window.location.href = `mailto:hello@cardpare.com?subject=${subject}&body=${body}`;
+  }
+
+  document.getElementById('wlSuccess').style.display = 'block';
+  emailEl.value = '';
+  document.querySelector('.waitlist-form').style.display = 'none';
+});
+</script>
+
+</body>
+</html>
