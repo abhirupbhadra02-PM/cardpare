@@ -215,6 +215,23 @@
   .redeem-body{font-size:0.86rem;color:var(--ink);margin-top:9px;line-height:1.55;}
   .verified-tag{display:inline-block;margin-top:9px;font-size:0.7rem;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:2px 9px;border-radius:10px;}
 
+  /* Rewards */
+  .reward-est{color:var(--ink-soft);font-weight:400;font-size:0.85em;}
+  .reward-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:15px;margin-bottom:12px;}
+  .reward-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .reward-unit-badge{display:inline-block;font-size:0.7rem;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:2px 9px;border-radius:10px;margin-top:2px;}
+  .reward-unverified-badge{display:inline-block;font-size:0.7rem;font-weight:600;color:var(--warn);background:var(--warn-soft);padding:2px 9px;border-radius:10px;margin-top:2px;margin-left:6px;}
+  .reward-month{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:1.05rem;text-align:right;flex-shrink:0;}
+  .reward-month-label{font-size:0.68rem;color:var(--ink-soft);font-weight:600;text-align:right;}
+  .reward-warning{background:var(--warn-soft);color:var(--warn);font-size:0.8rem;line-height:1.5;border-radius:8px;padding:9px 11px;margin-top:11px;}
+  .reward-table{margin-top:11px;border-top:1px solid var(--line);padding-top:11px;}
+  .reward-table-row{display:flex;justify-content:space-between;font-size:0.82rem;padding:4px 0;color:var(--ink-soft);}
+  .reward-table-row span:last-child{color:var(--ink);font-family:'IBM Plex Mono',monospace;}
+  .reward-note{font-size:0.78rem;color:var(--ink-soft);line-height:1.55;margin-top:10px;}
+  .reward-cta{margin-top:14px;padding:14px;background:var(--accent-soft);border-radius:10px;display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;}
+  .reward-cta-text{font-size:0.85rem;color:var(--accent);font-weight:600;}
+  .reward-cta-sub{font-size:0.76rem;color:var(--ink-soft);font-weight:400;margin-top:2px;}
+
   /* Card requests */
   .req-row{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:13px 15px;margin-bottom:9px;display:flex;justify-content:space-between;align-items:center;}
   .req-name{font-weight:600;font-size:0.9rem;}
@@ -261,6 +278,7 @@
     <div class="tab" data-tab="plan">Plan</div>
     <div class="tab" data-tab="audit">Log &amp; Audit</div>
     <div class="tab" data-tab="redeem">Redemption</div>
+    <div class="tab" data-tab="rewards">Rewards</div>
     <div class="tab" data-tab="cards">My Cards</div>
     <div class="tab" data-tab="compare">Compare</div>
   </div>
@@ -289,7 +307,7 @@
       <div class="stat-card accent">
         <div class="stat-top"><div class="label">Earned</div><button class="info-btn" id="earnedInfoBtn" aria-label="Show breakdown">i</button></div>
         <div class="value" id="dashEarned">₹0</div>
-        <div class="caption">Estimated reward value from the card you actually used on each purchase.</div>
+        <div class="caption">Rupee estimate of the reward earned from the card you actually used. See the Rewards tab for the real cashback, points or miles.</div>
       </div>
       <div class="stat-card" id="dashMissedCard">
         <div class="label">Left on the table</div>
@@ -324,6 +342,14 @@
       <div id="dashByCard"></div>
     </div>
     <div class="dash-section"><h3>Recent activity</h3><div id="dashRecent"></div></div>
+
+    <div class="reward-cta" id="dashRewardCta">
+      <div>
+        <div class="reward-cta-text">See what you're actually earning</div>
+        <div class="reward-cta-sub">Cashback, points or miles — per card, in their real units, not just ₹.</div>
+      </div>
+      <span style="color:var(--accent);font-weight:700;">→</span>
+    </div>
     </div>
   </div>
 
@@ -377,6 +403,21 @@
     <div id="redeemList"></div>
   </div>
 
+  <!-- REWARDS -->
+  <div class="panel" id="panel-rewards">
+    <h2>What you're actually earning</h2>
+    <p class="panel-sub">Cashback, points or miles — in each card's real unit, not a flattened rupee figure. The ₹ figure alongside is an estimate for comparison, not a guarantee.</p>
+    <div class="onboard-empty" id="rewardsEmpty">
+      <div class="onboard-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2F5D50" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      </div>
+      <h3>Add your cards to see this</h3>
+      <p>Select the cards you hold under My Cards, and this page will show what each one actually pays out.</p>
+      <button class="btn accent" id="rewardsOnboardCta">Select your cards</button>
+    </div>
+    <div id="rewardsList"></div>
+  </div>
+
   <!-- MY CARDS -->
   <div class="panel" id="panel-cards">
     <h2>My cards</h2>
@@ -414,77 +455,132 @@ const CATS = [
 ];
 
 const CARD_DB = [
-  {id:'hdfc-millennia', name:'HDFC Millennia', type:'Cashback', fee:'₹1,000+GST (waived ≥ ₹1L/yr)', forexRate:'3.5%', verified:'2026-09-01', upi:false, waiverTarget:100000,
+  {id:'hdfc-millennia', name:'HDFC Millennia', type:'Cashback', fee:'₹1,000+GST (waived ≥ ₹1L/yr)', forexRate:'3.5%', verified:'2026-09-22', upi:false, waiverTarget:100000,
     rates:{fuel:1, upi:0, amazon:1, ecommerce:5, dining:5, grocery:1, travel:1, forex:1, utilities:1, other:1},
     note:'5% capped at ₹1,000 CashPoints/month across 10 listed brands.',
     redeem:'CashPoints → statement credit or SmartBuy vouchers. No airline/hotel transfer partners.',
-    benefits:['8 complimentary domestic lounge visits/year, linked to quarterly spend','1% fuel surcharge waiver','Welcome voucher on activation']},
-  {id:'hdfc-infinia', name:'HDFC Infinia', type:'Rewards (metal)', fee:'₹12,500+GST (waived ≥ ₹10L/yr)', forexRate:'2%', verified:'2026-09-01', upi:false, waiverTarget:1000000,
+    benefits:['8 complimentary domestic lounge visits/year, linked to quarterly spend','1% fuel surcharge waiver','Welcome voucher on activation'],
+    reward:{unit:'CashPoints', isCash:false, unitValue:1, confidence:'medium',
+      perCategory:{fuel:1, upi:0, amazon:1, ecommerce:5, dining:5, grocery:1, travel:1, forex:1, utilities:1, other:1},
+      valueNote:'1 CashPoint ≈ ₹1 via statement credit (the simplest redemption) — worth less, ~₹0.30, via SmartBuy travel/catalogue redemption.',
+      capNote:'5% tier capped at 1,000 CashPoints/statement cycle; the 1% tier is separately capped at 1,000 CashPoints/cycle.'}},
+  {id:'hdfc-infinia', name:'HDFC Infinia', type:'Rewards (metal)', fee:'₹12,500+GST (waived ≥ ₹10L/yr)', forexRate:'2%', verified:'2026-09-22', upi:false, waiverTarget:1000000,
     rates:{fuel:3.3, upi:0, amazon:3.3, ecommerce:3.3, dining:3.3, grocery:3.3, travel:3.3, forex:3.3, utilities:3.3, other:3.3},
     note:'Flat ~3.3% via Reward Points, higher via SmartBuy flight/hotel bookings. No monthly cap.',
     redeem:'Reward Points transfer to 20+ airline/hotel partners at strong ratios — among the best transfer value in India.',
-    benefits:['Unlimited domestic & international lounge access (Priority Pass)','Complimentary golf games each month','Comprehensive travel & purchase insurance','Dedicated concierge service']},
-  {id:'amazonpay-icici', name:'Amazon Pay ICICI', type:'Cashback', fee:'Free for life', forexRate:'3.5%', verified:'2026-09-01', upi:false, waiverTarget:null,
+    benefits:['Unlimited domestic & international lounge access (Priority Pass)','Complimentary golf games each month','Comprehensive travel & purchase insurance','Dedicated concierge service'],
+    reward:{unit:'Reward Points', isCash:false, unitValue:1, confidence:'medium',
+      perCategory:{fuel:3.3, upi:0, amazon:3.3, ecommerce:3.3, dining:3.3, grocery:3.3, travel:3.3, forex:3.3, utilities:3.3, other:3.3},
+      valueNote:'1 Reward Point ≈ ₹1 via SmartBuy flight/hotel bookings — worth less (~₹0.50 catalogue, ~₹0.30 cash) via other redemption paths.',
+      capNote:'No cap on the base rate. SmartBuy can accelerate to 10X on specific merchants, capped at 3,000 pts/month for brand vouchers and 15,000 pts/month overall (changed Jul 2026).'}},
+  {id:'amazonpay-icici', name:'Amazon Pay ICICI', type:'Cashback', fee:'Free for life', forexRate:'3.5%', verified:'2026-09-22', upi:false, waiverTarget:null,
     rates:{fuel:1, upi:0, amazon:5, ecommerce:1, dining:1, grocery:1, travel:1, forex:1, utilities:1, other:1},
     note:'5% on Amazon for Prime members (3% non-Prime), uncapped.',
     redeem:'Cashback lands directly as Amazon Pay balance — no transfer partners, spend-only.',
-    benefits:['No joining or annual fee, ever','1% fuel surcharge waiver','Cashback credited directly, no redemption steps']},
-  {id:'axis-atlas', name:'Axis Atlas', type:'Miles', fee:'₹5,000+GST, no waiver', forexRate:'3.5%', verified:'2026-09-01', upi:false, waiverTarget:null,
+    benefits:['No joining or annual fee, ever','1% fuel surcharge waiver','Cashback credited directly, no redemption steps'],
+    reward:{unit:'Cashback', isCash:true, unitValue:1, confidence:'high',
+      perCategory:{fuel:1, upi:0, amazon:5, ecommerce:1, dining:1, grocery:1, travel:1, forex:1, utilities:1, other:1},
+      valueNote:'Cashback lands directly as spendable Amazon Pay balance — no conversion loss.',
+      capNote:'Uncapped.'}},
+  {id:'axis-atlas', name:'Axis Atlas', type:'Miles', fee:'₹5,000+GST, no waiver', forexRate:'3.5%', verified:'2026-09-22', upi:false, waiverTarget:null,
     tiers:[{label:'Silver tier', target:300000},{label:'Gold tier', target:750000}],
     rates:{fuel:0, upi:0, amazon:1, ecommerce:1, dining:1, grocery:1, travel:2.5, forex:1, utilities:0, other:1},
     note:'5 EDGE Miles/₹100 on travel (via Travel EDGE), 2/₹100 elsewhere. Fuel, rent, utilities excluded from earning.',
     redeem:'EDGE Miles transfer to 20+ airline/hotel partners at 1:2. Value shown assumes ~₹0.5/mile — actual value depends heavily on the redemption chosen.',
-    benefits:['Tiered domestic & international lounge access by annual spend','2,500 EDGE Miles welcome bonus on first transaction','Milestone EDGE Miles up to 10,000/year at higher tiers']},
-  {id:'axis-ace', name:'Axis Ace', type:'Cashback', fee:'₹499+GST (waived ≥ ₹2L/yr)', forexRate:'3.5%', verified:'2026-09-01', upi:false, waiverTarget:200000,
-    rates:{fuel:1.5, upi:0, amazon:1.5, ecommerce:1.5, dining:1.5, grocery:1.5, travel:1.5, forex:1.5, utilities:4, other:1.5},
-    note:'4% on bill payments via Google Pay, capped ₹500/month. 2% flat elsewhere.',
+    benefits:['Tiered domestic & international lounge access by annual spend','2,500 EDGE Miles welcome bonus on first transaction','Milestone EDGE Miles up to 10,000/year at higher tiers'],
+    reward:{unit:'EDGE Miles', isCash:false, unitValue:0.5, confidence:'medium',
+      perCategory:{fuel:0, upi:0, amazon:2, ecommerce:2, dining:2, grocery:2, travel:5, forex:2, utilities:0, other:2},
+      valueNote:'Estimated at ₹0.50/mile for comparison. Real value varies: ~₹1/mile via Travel EDGE portal bookings, more or less via the 20+ airline/hotel transfer partners depending on the program.',
+      capNote:'5 miles/₹100 travel rate applies up to ₹2 lakh/month in travel spend, then drops to 2 miles/₹100. Fuel, rent, utilities, wallets, gold/jewelry, insurance and government payments earn 0. Annual transfer caps: 30,000 miles/year to Group A partners, 120,000/year to Group B.'}},
+  {id:'axis-ace', name:'Axis Ace', type:'Cashback', fee:'₹499+GST (waived ≥ ₹2L/yr)', forexRate:'3.5%', verified:'2026-09-22', upi:false, waiverTarget:200000,
+    rates:{fuel:1.5, upi:0, amazon:1.5, ecommerce:1.5, dining:4, grocery:1.5, travel:4, forex:1.5, utilities:5, other:1.5},
+    note:'5% on utility bill payments/recharges via the Google Pay app (Android only — does not qualify on iPhone). 4% on Swiggy, Zomato and Ola. Both tiers share one ₹500/month combined cap. 1.5% flat elsewhere. (Corrected Sep 2026 — earlier data understated this card\'s top tiers as 4%/2%.)',
     redeem:'Straight cashback as statement credit — no transfer partners.',
-    benefits:['4 complimentary domestic lounge visits/year','1% fuel surcharge waiver','Best paired with Google Pay bill payments']},
-  {id:'axis-indianoil', name:'Axis Bank IndianOil RuPay', type:'Cashback', fee:'₹500+GST (waived ≥ ₹3.5L/yr)', forexRate:'3.5%', verified:'2026-09-01', upi:true, waiverTarget:350000,
+    benefits:['4 complimentary domestic lounge visits/year','1% fuel surcharge waiver','Best paired with Google Pay bill payments (Android only)'],
+    reward:{unit:'Cashback', isCash:true, unitValue:1, confidence:'medium',
+      perCategory:{fuel:1.5, upi:0, amazon:1.5, ecommerce:1.5, dining:4, grocery:1.5, travel:4, forex:1.5, utilities:5, other:1.5},
+      valueNote:'Direct statement cashback, no conversion loss.',
+      capNote:'₹500/month combined cap across the 5% and 4% tiers.'}},
+  {id:'axis-indianoil', name:'Axis Bank IndianOil RuPay', type:'Cashback', fee:'₹500+GST (waived ≥ ₹3.5L/yr)', forexRate:'3.5%', verified:'2026-09-22', upi:true, waiverTarget:350000,
     rates:{fuel:4, upi:1, amazon:1, ecommerce:1, dining:1, grocery:1, travel:1, forex:1, utilities:1, other:1},
-    note:'4% + surcharge waiver at IOCL pumps. RuPay network, so it is UPI-linkable.',
-    redeem:'Cashback as statement credit — no transfer partners.',
-    benefits:['1% fuel surcharge waiver at IOCL pumps','RuPay network — usable on UPI apps','No lounge access on this variant']},
-  {id:'sbi-cashback', name:'SBI Cashback', type:'Cashback', fee:'₹999+GST (waived ≥ ₹2L/yr)', forexRate:'3.5%', verified:'2026-09-01', upi:false, waiverTarget:200000,
+    note:'4% at IOCL pumps ≈ 20 EDGE Reward Points/₹100, worth ~₹0.20/point via the EDGE Rewards Portal (vouchers). Accelerated fuel earning is capped at ₹5,000/month spend (~1,000 points). Separately, a 1% fuel surcharge waiver applies, capped ₹50/statement cycle. RuPay network, so it is UPI-linkable.',
+    redeem:'Points redeemable as gift/e-commerce vouchers via the EDGE Rewards Portal — no airline/hotel transfer.',
+    benefits:['1% fuel surcharge waiver at IOCL pumps','RuPay network — usable on UPI apps','No lounge access on this variant'],
+    reward:{unit:'EDGE Reward Points', isCash:false, unitValue:0.2, confidence:'medium',
+      perCategory:{fuel:20, upi:5, amazon:5, ecommerce:5, dining:5, grocery:5, travel:5, forex:5, utilities:5, other:5},
+      valueNote:'1 EDGE Reward Point ≈ ₹0.20 via the EDGE Rewards Portal (gift/e-commerce vouchers).',
+      capNote:'Accelerated fuel tier capped at ₹5,000/month eligible spend (~1,000 points). A separate 1% fuel surcharge waiver is capped at ₹50/cycle.'}},
+  {id:'sbi-cashback', name:'SBI Cashback', type:'Cashback', fee:'₹999+GST (waived ≥ ₹2L/yr)', forexRate:'3.5%', verified:'2026-09-22', upi:false, waiverTarget:200000,
     rates:{fuel:1, upi:0, amazon:5, ecommerce:5, dining:1, grocery:1, travel:1, forex:1, utilities:1, other:1},
-    note:'5% on all online spend, capped ₹5,000/month. 1% offline.',
+    note:'5% on all online spend, capped ₹2,000/statement cycle (cut from ₹5,000, effective 1 Apr 2026). 1% offline, also now capped ₹2,000/cycle (new cap added the same date — offline was previously uncapped at this rate).',
     redeem:'Cashback as statement credit — no transfer partners.',
-    benefits:['1% fuel surcharge waiver','No lounge access','Simple, no-frills cashback structure']},
-  {id:'sbi-simplyclick', name:'SBI SimplyCLICK', type:'Rewards', fee:'₹499+GST (waived ≥ ₹1L/yr)', forexRate:'3.5%', verified:'2026-09-01', upi:false, waiverTarget:100000,
+    benefits:['1% fuel surcharge waiver','No lounge access','Simple, no-frills cashback structure'],
+    reward:{unit:'Cashback', isCash:true, unitValue:1, confidence:'high',
+      perCategory:{fuel:1, upi:0, amazon:5, ecommerce:5, dining:1, grocery:1, travel:1, forex:1, utilities:1, other:1},
+      valueNote:'Direct statement cashback, no conversion loss.',
+      capNote:'₹2,000/statement cycle on the 5% online tier; a separate ₹2,000/cycle cap now applies to the 1% offline tier too (since 1 Apr 2026).'}},
+  {id:'sbi-simplyclick', name:'SBI SimplyCLICK', type:'Rewards', fee:'₹499+GST (waived ≥ ₹1L/yr)', forexRate:'3.5%', verified:'2026-09-22', upi:false, waiverTarget:100000,
     rates:{fuel:0.25, upi:0, amazon:2.5, ecommerce:2.5, dining:0.25, grocery:0.25, travel:0.25, forex:0.25, utilities:0.25, other:0.25},
-    note:'10X points on select online partners (Amazon, BookMyShow, etc.), 1X elsewhere.',
+    note:'10X Reward Points (2.5% effective) on named online partners — BookMyShow, Apollo 24|7, Domino\'s, IGP, Myntra, Yatra, Netmeds, Cleartrip, Swiggy, GyFTR, Tata CLiQ (worth confirming Amazon\'s current inclusion directly with SBI — this app treats Amazon as part of the 10X tier). 5X (1.25%) on other online spend generally, capped at 10,000 points/month on that tier. 1X (0.25%) offline. Point value ₹0.25 via statement credit.',
     redeem:'Points redeemable as vouchers or statement credit — limited transfer options.',
-    benefits:['Welcome e-voucher on activation','1% fuel surcharge waiver','Renewal bonus voucher each year']},
-  {id:'idfc-wealth', name:'IDFC First Wealth', type:'Rewards', fee:'Free for life', forexRate:'1.5%', verified:'2026-09-01', upi:false, waiverTarget:null,
-    rates:{fuel:0.75, upi:0, amazon:0.75, ecommerce:0.75, dining:0.75, grocery:0.75, travel:0.75, forex:0.75, utilities:0.75, other:0.75},
-    note:'10X (~2.5%) once monthly spend on the card crosses ₹20,000, else 0.75% base.',
+    benefits:['Welcome e-voucher on activation','1% fuel surcharge waiver','Renewal bonus voucher each year'],
+    reward:{unit:'Reward Points', isCash:false, unitValue:0.25, confidence:'medium',
+      perCategory:{fuel:1, upi:0, amazon:10, ecommerce:10, dining:1, grocery:1, travel:1, forex:1, utilities:1, other:1},
+      valueNote:'1 Reward Point ≈ ₹0.25 via statement credit.',
+      capNote:'The 5X general-online tier is capped at 10,000 points/month.'}},
+  {id:'idfc-wealth', name:'IDFC First Wealth', type:'Rewards', fee:'Free for life', forexRate:'1.5%', verified:'2026-09-22', upi:false, waiverTarget:null,
+    rates:{fuel:0.125, upi:0, amazon:0.375, ecommerce:0.375, dining:1.25, grocery:0.375, travel:1.25, forex:1.25, utilities:0.125, other:0.375},
+    note:'Restructured in 2026: 10X FIRST Rewards points (1.25% effective) on dining, travel and international spend from the very first transaction — the old ₹20,000/month threshold was removed in Jun 2026. 3X (0.375%) on regular/UPI spend above ₹2,000. 1X (0.125%) on insurance, utility, railway, FASTag and UPI spend at or below ₹2,000. Point value was separately cut from ₹1/₹150 to ₹1/₹200 spent in Jan 2026 — a real devaluation from older published rates, now reflected here.',
     redeem:'Points redeemable via FIRST Rewards Gallery for flights/hotels, or as statement credit.',
-    benefits:['Unlimited domestic lounge access','Limited complimentary international lounge visits','Comprehensive travel insurance','Free for life, no annual fee']},
+    benefits:['Unlimited domestic lounge access','Limited complimentary international lounge visits','Comprehensive travel insurance','Free for life, no annual fee'],
+    reward:{unit:'FIRST Rewards points', isCash:false, unitValue:0.25, confidence:'medium',
+      perCategory:{fuel:0.5, upi:0, amazon:1.5, ecommerce:1.5, dining:5, grocery:1.5, travel:5, forex:5, utilities:0.5, other:1.5},
+      valueNote:'1 FIRST Rewards point ≈ ₹0.25 via statement credit or the Rewards Gallery.',
+      capNote:'Points earn only up to your credit limit per billing cycle — no separate category cap found.'}},
   {id:'idfc-select', name:'IDFC First Select', type:'Rewards', fee:'Free for life', forexRate:'1.5%', verified:'2026-09-01', upi:false, waiverTarget:null,
     rates:{fuel:0.75, upi:0, amazon:0.75, ecommerce:0.75, dining:0.75, grocery:0.75, travel:0.75, forex:0.75, utilities:0.75, other:0.75},
-    note:'Same structure as Wealth on a lower income-eligibility tier; fewer lounge visits.',
+    note:'Previously modeled as matching IDFC First Wealth\'s structure. Wealth\'s terms changed materially in 2026 (10X threshold removed, point value cut) and it\'s unclear from available sources whether Select kept the older ₹20,000/month spend threshold or changed the same way — flagged for direct confirmation with IDFC before relying on the numbers below.',
     redeem:'Points redeemable via FIRST Rewards Gallery, or as statement credit.',
-    benefits:['Domestic lounge access, linked to quarterly spend','Free for life, no annual fee','Comprehensive travel insurance']},
-  {id:'onecard', name:'OneCard', type:'Cashback (metal)', fee:'Free for life', forexRate:'1%', verified:'2026-09-01', upi:false, waiverTarget:null,
+    benefits:['Domestic lounge access, linked to quarterly spend','Free for life, no annual fee','Comprehensive travel insurance'],
+    reward:{unit:'FIRST Rewards points', isCash:false, unitValue:0.25, confidence:'unverified',
+      perCategory:{fuel:3, upi:0, amazon:3, ecommerce:3, dining:3, grocery:3, travel:3, forex:3, utilities:3, other:3},
+      valueNote:'1 FIRST Rewards point ≈ ₹0.25 (estimated) — this card\'s current earn structure is unconfirmed post-2026, see note above.',
+      capNote:'Unconfirmed post-2026 changes.',
+      warning:'Reward structure unverified — IDFC changed Select\'s sibling card (Wealth) significantly in 2026 and it\'s unclear if Select changed too. Confirm with IDFC before relying on this.'}},
+  {id:'onecard', name:'OneCard', type:'Cashback (metal)', fee:'Free for life', forexRate:'1%', verified:'2026-09-22', upi:false, waiverTarget:null,
     rates:{fuel:1, upi:0, amazon:1, ecommerce:1, dining:1, grocery:1, travel:1, forex:1, utilities:1, other:1},
-    note:'5X reward points on your top-2 detected categories each month — effective value is closer to ~1%, not 5%, once converted to ₹.',
+    note:'2 Reward Points/₹100 on general spend, rising to 10 points/₹100 (5X) on your top-2 detected spend categories each month — a category needs at least ₹750 spend that month to qualify toward the top-2. Points redeemed at ₹0.10 each via the in-app store; this app shows a flat 1% assuming your top-2 categories cover most of your spend, which won\'t hold exactly for every month.',
     redeem:'Points redeemable as cashback in-app at roughly ₹0.10/point. No transfer partners.',
-    benefits:['No joining or annual fee, ever','Instant virtual card issuance','1% forex markup, among the lowest available','In-app limit and freeze controls']},
-  {id:'kiwi-rupay', name:'Kiwi RuPay', type:'Cashback', fee:'Free for life', forexRate:'N/A (domestic focus)', verified:'2026-09-01', upi:true, waiverTarget:null,
+    benefits:['No joining or annual fee, ever','Instant virtual card issuance','1% forex markup, among the lowest available','In-app limit and freeze controls'],
+    reward:{unit:'Reward Points', isCash:false, unitValue:0.1, confidence:'medium',
+      perCategory:{fuel:10, upi:0, amazon:10, ecommerce:10, dining:10, grocery:10, travel:10, forex:10, utilities:10, other:10},
+      valueNote:'1 Reward Point ≈ ₹0.10 via the in-app store. Figures assume the spend lands in your top-2 categories for the month — base rate outside your top-2 is 2 points/₹100 (0.2% effective).',
+      capNote:'A spend category needs ≥₹750 in a month to qualify toward your top-2.'}},
+  {id:'kiwi-rupay', name:'Kiwi RuPay', type:'Cashback', fee:'Free for life', forexRate:'N/A (domestic focus)', verified:'2026-09-22', upi:true, waiverTarget:null,
     rates:{fuel:1.5, upi:1.5, amazon:1.5, ecommerce:1.5, dining:1.5, grocery:1.5, travel:1.5, forex:0, utilities:1.5, other:1.5},
-    note:'Flat 1.5% on UPI scan-and-pay, up to 5% on the Neon variant.',
+    note:'1.5% base on UPI Scan & Pay (free plan). The paid Neon membership (₹999+tax/year) raises the base to 2%, with milestone bonuses to 3%/4%/5% after ₹50,000/₹1,00,000/₹1,50,000 cumulative spend in a year — milestone bonuses sit outside the monthly cap.',
     redeem:'Cashback lands in-app instantly — no transfer partners.',
-    benefits:['No annual fee','Instant virtual card, works directly on UPI apps','No-cost EMI available on select purchases']},
-  {id:'hsbc-live-plus', name:'HSBC Live+', type:'Cashback', fee:'₹999+GST (waived ≥ ₹2L/yr)', forexRate:'3.5%', verified:'2026-09-01', upi:false, waiverTarget:200000,
-    rates:{fuel:10, upi:0, amazon:1.5, ecommerce:1.5, dining:10, grocery:10, travel:1.5, forex:1.5, utilities:1.5, other:1.5},
-    note:'10% on dining, grocery, and fuel, capped at ₹1,000 cashback/month combined.',
+    benefits:['No annual fee','Instant virtual card, works directly on UPI apps','No-cost EMI available on select purchases'],
+    reward:{unit:'Cashback', isCash:true, unitValue:1, confidence:'medium',
+      perCategory:{fuel:1.5, upi:1.5, amazon:1.5, ecommerce:1.5, dining:1.5, grocery:1.5, travel:1.5, forex:0, utilities:1.5, other:1.5},
+      valueNote:'Cashback lands in-app instantly, no conversion loss.',
+      capNote:'Capped at 1% of your credit limit/month (free plan); Neon members are capped at the lower of that or ₹500/month, which can actually be more restrictive for higher-limit users.'}},
+  {id:'hsbc-live-plus', name:'HSBC Live+', type:'Cashback', fee:'₹999+GST (waived ≥ ₹2L/yr)', forexRate:'3.5%', verified:'2026-09-22', upi:false, waiverTarget:200000,
+    rates:{fuel:1.5, upi:0, amazon:10, ecommerce:10, dining:10, grocery:10, travel:1.5, forex:1.5, utilities:10, other:1.5},
+    note:'The 10% tier is dining, food delivery, grocery, shopping (incl. Amazon/ecommerce) and utility bill payments — fuel is NOT part of this tier. A separate, smaller benefit applies to fuel: ₹250 cashback on contactless fuel spend over ₹10,000/quarter. Combined 10% tier capped at ₹1,200/month. 1.5% flat elsewhere. (Corrected Sep 2026 — earlier data incorrectly included fuel in the 10% tier.)',
     redeem:'Cashback as statement credit — no transfer partners.',
-    benefits:['1% fuel surcharge waiver','No lounge access on this variant','Strong everyday-category cashback']},
+    benefits:['No lounge access on this variant','Strong everyday-category cashback','Quarterly fuel cashback benefit, separate from the main 10% tier'],
+    reward:{unit:'Cashback', isCash:true, unitValue:1, confidence:'medium',
+      perCategory:{fuel:1.5, upi:0, amazon:10, ecommerce:10, dining:10, grocery:10, travel:1.5, forex:1.5, utilities:10, other:1.5},
+      valueNote:'Direct statement cashback, no conversion loss.',
+      capNote:'₹1,200/month combined cap on the 10% tier. Fuel gets a separate ₹250/quarter benefit instead, on contactless spend over ₹10,000/quarter.'}},
   {id:'scapia', name:'Scapia Federal', type:'Travel co-brand', fee:'Free for life', forexRate:'0%', verified:'2026-09-01', upi:false, waiverTarget:null,
     rates:{fuel:1, upi:0, amazon:1, ecommerce:1, dining:1, grocery:1, travel:5, forex:3, utilities:1, other:1},
-    note:'Zero forex markup and strong travel-booking rewards via the Scapia app specifically.',
+    note:'Zero forex markup and strong travel-booking rewards via the Scapia app specifically. Coin-to-rupee conversion could not be confirmed this pass — some sources suggest 5 Scapia Coins = ₹1 (i.e. 1 coin ≈ ₹0.20), which would contradict the 1-coin-≈-₹1 assumption this app has used, and sources disagreed on whether the base earn rate is 10% or 20% coins on general spend. Flagged for direct confirmation with Scapia before relying on the figures below — they may be overstated.',
     redeem:'Coins redeemable for flights/hotels in-app. No external airline/hotel transfer.',
-    benefits:['Zero forex markup on international spends','Companion perks on select international flight bookings','Free for life, no annual fee']}
+    benefits:['Zero forex markup on international spends','Companion perks on select international flight bookings','Free for life, no annual fee'],
+    reward:{unit:'Scapia Coins', isCash:false, confidence:'unverified',
+      warning:'Coin-to-rupee conversion is unverified — some sources suggest coins are worth 5x less than this app currently assumes. Figures below use the old 1-coin-≈-₹1 assumption and may be overstated. Confirm with Scapia before relying on this.'}}
 ];
 
 let heldCards = [], transactions = [], cardRequests = [], myVotes = [], plannedPurchases = [], monthlyLimit = null;
@@ -553,10 +649,17 @@ document.querySelectorAll('.tab').forEach(t=>{
     document.getElementById('panel-'+t.dataset.tab).classList.add('active');
     if(t.dataset.tab==='dash') renderDashboard();
     if(t.dataset.tab==='compare') renderCompare();
+    if(t.dataset.tab==='rewards') renderRewards();
   });
 });
 document.getElementById('onboardCta').addEventListener('click', ()=>{
   document.querySelector('.tab[data-tab="cards"]').click();
+});
+document.getElementById('rewardsOnboardCta').addEventListener('click', ()=>{
+  document.querySelector('.tab[data-tab="cards"]').click();
+});
+document.getElementById('dashRewardCta').addEventListener('click', ()=>{
+  document.querySelector('.tab[data-tab="rewards"]').click();
 });
 
 function fillCatSelect(sel){ sel.innerHTML = CATS.map(c=>`<option value="${c.id}">${c.label}</option>`).join(''); }
@@ -566,6 +669,25 @@ fillCatSelect(document.getElementById('futCat'));
 
 function fmtMoney(n){ return "₹"+Math.round(n).toLocaleString('en-IN'); }
 function heldCardObjs(){ return CARD_DB.filter(c=>heldCards.includes(c.id)); }
+function fmtUnits(n){ return (Math.round(n*10)/10).toLocaleString('en-IN'); }
+
+// Native reward units (cashback ₹, points, or miles) a card earns for a category + amount,
+// using the card's real per-category earn rate rather than the flattened comparison % in `rates`.
+function nativeUnitsFor(card, catId, amt){
+  const r = card.reward;
+  if(!r || !r.perCategory) return null;
+  return (r.perCategory[catId]||0)/100*amt;
+}
+// Human-readable reward string for one category+amount on one card, e.g. "620 EDGE Miles (~₹310)".
+function rewardLabelFor(card, catId, amt){
+  const r = card.reward;
+  if(!r || r.isCash || !r.perCategory){
+    return fmtMoney((card.rates[catId]||0)/100*amt);
+  }
+  const units = nativeUnitsFor(card, catId, amt);
+  const inr = r.unitValue!=null ? units*r.unitValue : null;
+  return `${fmtUnits(units)} ${r.unit}` + (inr!=null ? ` <span class="reward-est">(~${fmtMoney(inr)})</span>` : '');
+}
 function rankCardsFor(catId, amt){
   let pool = heldCardObjs();
   if(catId==='upi') pool = pool.filter(c=>c.upi);
@@ -752,6 +874,39 @@ function expandRowsForMonth(monthDate){
 
 let earnedRows = [];
 
+// Shared "this month" totals used by both the Dashboard and the Rewards tab, keyed by card
+// so both can show the same spend/earned/native-units figures without recomputing separately.
+function computeMonthlySummary(){
+  const now = new Date();
+  const rows = expandRowsForMonth(now);
+  let totalSpend=0, totalEarned=0, totalMissed=0;
+  let byCard = {};
+  let anyMiss = false, anyLogged = rows.length>0;
+  const rowsEarned = [];
+
+  rows.forEach(row=>{
+    totalSpend += row.displayAmt;
+    const cardUsed = CARD_DB.find(c=>c.id===row.cardId);
+    if(!cardUsed) return;
+    byCard[cardUsed.name] = byCard[cardUsed.name] || {spend:0, earned:0, units:0, cardId:cardUsed.id};
+    byCard[cardUsed.name].spend += row.displayAmt;
+    if(row.isFirstMonth){
+      const v = verdictFor(row.cat, row.cardId, row.amt);
+      if(v){
+        totalEarned += v.usedValue;
+        byCard[cardUsed.name].earned += v.usedValue;
+        const nativeUnits = nativeUnitsFor(cardUsed, row.cat, row.amt);
+        if(nativeUnits!=null) byCard[cardUsed.name].units += nativeUnits;
+        if(v.isMiss){ totalMissed += v.gap; anyMiss = true; }
+        if(v.usedValue > 0){
+          rowsEarned.push({ cat: CATS.find(c=>c.id===row.cat)?.label || row.cat, catId: row.cat, cardId: cardUsed.id, card: cardUsed.name, amt: row.amt, earned: v.usedValue });
+        }
+      }
+    }
+  });
+  return {totalSpend, totalEarned, totalMissed, byCard, anyMiss, anyLogged, rowsEarned};
+}
+
 function renderDashboard(){
   const onboardEl = document.getElementById('onboardEmpty');
   const mainEl = document.getElementById('dashMain');
@@ -764,31 +919,9 @@ function renderDashboard(){
     mainEl.style.display = 'block';
   }
 
-  const now = new Date();
-  const rows = expandRowsForMonth(now);
-  let totalSpend=0, totalEarned=0, totalMissed=0;
-  let byCard = {};
-  let anyMiss = false, anyLogged = rows.length>0;
-  earnedRows = [];
-
-  rows.forEach(row=>{
-    totalSpend += row.displayAmt;
-    const cardUsed = CARD_DB.find(c=>c.id===row.cardId);
-    if(!cardUsed) return;
-    byCard[cardUsed.name] = byCard[cardUsed.name] || {spend:0, earned:0};
-    byCard[cardUsed.name].spend += row.displayAmt;
-    if(row.isFirstMonth){
-      const v = verdictFor(row.cat, row.cardId, row.amt);
-      if(v){
-        totalEarned += v.usedValue;
-        byCard[cardUsed.name].earned += v.usedValue;
-        if(v.isMiss){ totalMissed += v.gap; anyMiss = true; }
-        if(v.usedValue > 0){
-          earnedRows.push({ cat: CATS.find(c=>c.id===row.cat)?.label || row.cat, card: cardUsed.name, amt: row.amt, earned: v.usedValue });
-        }
-      }
-    }
-  });
+  const summary = computeMonthlySummary();
+  const {totalSpend, totalEarned, totalMissed, byCard, anyMiss, anyLogged} = summary;
+  earnedRows = summary.rowsEarned;
 
   document.getElementById('dashSpend').textContent = fmtMoney(totalSpend);
   document.getElementById('dashEarned').textContent = fmtMoney(totalEarned);
@@ -820,7 +953,13 @@ function renderDashboard(){
   const cardNames = Object.keys(byCard);
   byCardEl.innerHTML = cardNames.length ? cardNames.map(name=>{
     const cardObj = CARD_DB.find(c=>c.name===name);
-    return `<div class="mini-row"><div style="display:flex;align-items:center;gap:10px;">${cardObj?cardChip(cardObj.id,'sm'):''}<div><div>${name}</div><div class="mini-sub">${fmtMoney(byCard[name].spend)} spent</div></div></div><div class="mini-val">${fmtMoney(byCard[name].earned)}</div></div>`;
+    const r = cardObj && cardObj.reward;
+    let earnedDisplay = fmtMoney(byCard[name].earned);
+    if(r && !r.isCash && r.perCategory){
+      const inr = r.unitValue!=null ? byCard[name].units*r.unitValue : null;
+      earnedDisplay = `${fmtUnits(byCard[name].units)} ${r.unit}` + (inr!=null ? ` <span class="reward-est">(~${fmtMoney(inr)})</span>` : '');
+    }
+    return `<div class="mini-row"><div style="display:flex;align-items:center;gap:10px;">${cardObj?cardChip(cardObj.id,'sm'):''}<div><div>${name}</div><div class="mini-sub">${fmtMoney(byCard[name].spend)} spent</div></div></div><div class="mini-val">${earnedDisplay}</div></div>`;
   }).join('') : '<div class="empty-hint">No spend logged this month yet.</div>';
 
   const recentEl = document.getElementById('dashRecent');
@@ -840,11 +979,15 @@ function renderEarnedDetail(){
     el.innerHTML = '<div class="empty-hint">Nothing earned yet this month — log a spend to see the breakdown.</div>' + formulaHtml;
     return;
   }
-  el.innerHTML = earnedRows.map(r=>`
+  el.innerHTML = earnedRows.map(r=>{
+    const cardObj = CARD_DB.find(c=>c.id===r.cardId);
+    const display = cardObj ? rewardLabelFor(cardObj, r.catId, r.amt) : fmtMoney(r.earned);
+    return `
     <div class="earned-detail-row">
       <div><div>${r.cat}</div><div class="earned-detail-sub">${r.card} · ${fmtMoney(r.amt)} spent</div></div>
-      <div class="mini-val">${fmtMoney(r.earned)}</div>
-    </div>`).join('') + formulaHtml;
+      <div class="mini-val">${display}</div>
+    </div>`;
+  }).join('') + formulaHtml;
 }
 document.getElementById('earnedInfoBtn').addEventListener('click', ()=>{
   document.getElementById('earnedDetail').classList.toggle('open');
@@ -877,6 +1020,60 @@ document.getElementById('budgetSaveBtn').addEventListener('click', async ()=>{
   document.getElementById('budgetInput').value = '';
   renderDashboard();
 });
+
+// ---------- Rewards ----------
+function renderRewards(){
+  const emptyEl = document.getElementById('rewardsEmpty');
+  const listEl = document.getElementById('rewardsList');
+  const held = heldCardObjs();
+  if(held.length===0){
+    emptyEl.classList.add('show');
+    listEl.innerHTML = '';
+    return;
+  }
+  emptyEl.classList.remove('show');
+  const summary = computeMonthlySummary();
+
+  listEl.innerHTML = held.map(c=>{
+    const r = c.reward || {};
+    const unverified = r.confidence === 'unverified';
+    const monthData = summary.byCard[c.name];
+    let monthDisplay = 'Nothing logged yet';
+    if(monthData && monthData.spend>0){
+      if(!r.isCash && r.perCategory){
+        const inr = r.unitValue!=null ? monthData.units*r.unitValue : null;
+        monthDisplay = `${fmtUnits(monthData.units)} ${r.unit}` + (inr!=null ? ` <span class="reward-est">(~${fmtMoney(inr)})</span>` : '');
+      } else {
+        monthDisplay = fmtMoney(monthData.earned);
+      }
+    }
+    const baseline = r.perCategory ? r.perCategory.other : c.rates.other;
+    const rows = CATS.filter(cat=>{
+      const val = r.perCategory ? r.perCategory[cat.id] : c.rates[cat.id];
+      return cat.id==='other' || val!==baseline;
+    }).map(cat=>{
+      const val = r.perCategory ? r.perCategory[cat.id] : c.rates[cat.id];
+      const label = (!r.isCash && r.perCategory) ? `${val} ${r.unit}/₹100` : `${val}% cashback`;
+      return `<div class="reward-table-row"><span>${cat.label}</span><span>${label}</span></div>`;
+    }).join('');
+    return `<div class="reward-card">
+      <div class="reward-card-top">
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;">${cardChip(c.id,'sm')}<div style="font-weight:600;font-size:0.94rem;">${c.name}</div></div>
+          <div><span class="reward-unit-badge">${r.unit || 'Cashback'}</span>${unverified?'<span class="reward-unverified-badge">Unverified</span>':''}</div>
+        </div>
+        <div>
+          <div class="reward-month">${monthDisplay}</div>
+          <div class="reward-month-label">this month</div>
+        </div>
+      </div>
+      ${r.warning ? `<div class="reward-warning">${r.warning}</div>` : ''}
+      <div class="reward-table">${rows}</div>
+      <div class="reward-note">${r.valueNote || ''}${r.capNote ? ' '+r.capNote : ''}</div>
+      <div class="verified-tag">Last verified ${c.verified}</div>
+    </div>`;
+  }).join('');
+}
 
 // ---------- Redemption ----------
 function renderRedeem(){
@@ -971,6 +1168,7 @@ function renderAll(){
   renderAudit();
   renderDashboard();
   renderRedeem();
+  renderRewards();
   renderCardPicker();
   renderRequests();
   renderFuturePlan();
