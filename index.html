@@ -29,6 +29,33 @@
     padding:9px 18px;border-radius:8px;background:var(--ink);color:#fff;
     font-size:0.84rem;font-weight:600;text-decoration:none;
   }
+  .nav-actions{display:flex;align-items:center;gap:12px;}
+  .btn-ghost-small{padding:9px 16px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:0.84rem;font-weight:600;cursor:pointer;}
+  .btn-accent-small{padding:9px 16px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:0.84rem;font-weight:600;cursor:pointer;}
+
+  /* Header account area — same pattern as app.html, kept self-contained per file */
+  .header-actions{position:relative;}
+  .signin-menu, .profile-menu{position:relative;}
+  .avatar-btn{
+    width:34px;height:34px;border-radius:50%;background:var(--accent);color:#fff;border:none;
+    font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:0.76rem;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;padding:0;
+  }
+  .signin-popover, .profile-dropdown{
+    display:none;position:absolute;top:44px;right:0;min-width:210px;background:var(--surface);
+    border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px rgba(20,22,26,0.14);
+    padding:10px;z-index:45;
+  }
+  .signin-popover.open, .profile-dropdown.open{display:block;}
+  .signin-popover input{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font-family:'Inter',sans-serif;font-size:0.85rem;margin-bottom:8px;}
+  .signin-popover .btn-accent-small{width:100%;}
+  .signin-msg{font-size:0.78rem;color:var(--accent);margin-top:8px;}
+  .profile-dropdown-email{font-size:0.78rem;color:var(--ink-soft);padding:6px 10px 10px;word-break:break-all;border-bottom:1px solid var(--line);margin-bottom:6px;}
+  .profile-dropdown-item{
+    display:block;width:100%;text-align:left;padding:9px 10px;border-radius:8px;font-size:0.86rem;
+    color:var(--ink);background:none;border:none;cursor:pointer;font-family:'Inter',sans-serif;box-sizing:border-box;
+  }
+  .profile-dropdown-item:hover{background:var(--bg);}
 
   /* Hero */
   .hero{padding:40px 24px 70px;text-align:left;}
@@ -143,7 +170,10 @@
 
 <nav>
   <div class="brand">Card<span>pare</span></div>
-  <a class="nav-cta" href="app.html">Open the app</a>
+  <div class="nav-actions">
+    <div class="header-actions" id="headerActions"></div>
+    <a class="nav-cta" href="app.html">Open the app</a>
+  </div>
 </nav>
 
 <div class="hero">
@@ -307,9 +337,70 @@ const storageAdapter = {
     catch(e){ return null; }
   }
 };
-const sb = (!hasClaudeStorage)
+const cloudEnabled = !hasClaudeStorage;
+const sb = cloudEnabled
   ? supabase.createClient('https://bepdjvbddwgcofxrjnwu.supabase.co', 'sb_publishable_wBA_TocjjQ_QBwxJ1ja_wQ_hiCcVmMI')
   : null;
+
+// ---------- Header sign-in ----------
+// Landing page just needs "am I signed in" — the account itself (held cards,
+// transactions, admin access) lives entirely in app.html.
+function initialsFor(email){ return (email||'??').slice(0,2).toUpperCase(); }
+function renderHeaderActions(user){
+  const el = document.getElementById('headerActions');
+  if(!cloudEnabled){ el.style.display = 'none'; return; }
+  el.style.display = '';
+  if(user){
+    el.innerHTML = `
+      <div class="profile-menu">
+        <button class="avatar-btn" id="avatarBtn" aria-label="Account menu">${initialsFor(user.email)}</button>
+        <div class="profile-dropdown" id="profileDropdown">
+          <div class="profile-dropdown-email">${user.email}</div>
+          <button class="profile-dropdown-item" id="headerSignOutBtn">Sign out</button>
+        </div>
+      </div>`;
+    document.getElementById('avatarBtn').addEventListener('click', (e)=>{ e.stopPropagation(); document.getElementById('profileDropdown').classList.toggle('open'); });
+    document.getElementById('headerSignOutBtn').addEventListener('click', async ()=>{ await sb.auth.signOut(); location.reload(); });
+  } else {
+    el.innerHTML = `
+      <div class="signin-menu">
+        <button class="btn-ghost-small" id="headerSignInBtn">Sign in</button>
+        <div class="signin-popover" id="signinPopover">
+          <input type="email" id="headerSigninEmail" placeholder="you@email.com">
+          <button class="btn-accent-small" id="headerSigninSendBtn">Send magic link</button>
+          <div class="signin-msg" id="headerSigninMsg" style="display:none;"></div>
+        </div>
+      </div>`;
+    document.getElementById('headerSignInBtn').addEventListener('click', (e)=>{ e.stopPropagation(); document.getElementById('signinPopover').classList.toggle('open'); });
+    document.getElementById('headerSigninSendBtn').addEventListener('click', async ()=>{
+      const emailEl = document.getElementById('headerSigninEmail');
+      const email = emailEl.value.trim();
+      const msgEl = document.getElementById('headerSigninMsg');
+      if(!email || !email.includes('@')){ emailEl.focus(); return; }
+      try{
+        // Sign in here, land signed-in in the app itself — that's where an account is actually useful.
+        const redirectTo = new URL('app.html', window.location.href).toString();
+        await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: redirectTo } });
+        msgEl.textContent = 'Check your email for a sign-in link.';
+        msgEl.style.display = 'block';
+      }catch(e){
+        msgEl.textContent = 'Something went wrong sending that link — try again in a moment.';
+        msgEl.style.display = 'block';
+      }
+    });
+  }
+}
+document.addEventListener('click', (e)=>{
+  const dd = document.getElementById('profileDropdown');
+  if(dd && !e.target.closest('.profile-menu')) dd.classList.remove('open');
+  const pop = document.getElementById('signinPopover');
+  if(pop && !e.target.closest('.signin-menu')) pop.classList.remove('open');
+});
+if(cloudEnabled){
+  sb.auth.onAuthStateChange((_event, session)=>{ renderHeaderActions(session ? session.user : null); });
+} else {
+  document.getElementById('headerActions').style.display = 'none';
+}
 
 document.getElementById('wlBtn').addEventListener('click', async ()=>{
   const emailEl = document.getElementById('wlEmail');

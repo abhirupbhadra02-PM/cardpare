@@ -42,12 +42,17 @@
   .row .val{font-family:'IBM Plex Mono',monospace;font-weight:600;}
   .empty{color:var(--ink-soft);font-size:0.85rem;padding:14px 0;}
   .signout{background:none;border:none;color:var(--ink-soft);font-size:0.8rem;cursor:pointer;text-decoration:underline;padding:0;margin-top:4px;}
+  .admin-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+  .back-link{font-size:0.8rem;color:var(--ink-soft);text-decoration:underline;}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="brand">Card<span>pare</span></div>
-  <div class="kicker">Admin — aggregate view only, not visible to regular users</div>
+  <div class="admin-topbar">
+    <div class="brand">Card<span>pare</span></div>
+    <a class="back-link" href="app.html">← Back to app</a>
+  </div>
+  <div class="kicker">Admin — aggregate view only, not visible to regular users. Signed in via the app already? This page picks up that same session automatically — no need to sign in twice.</div>
 
   <div id="authGate">
     <h1>Sign in</h1>
