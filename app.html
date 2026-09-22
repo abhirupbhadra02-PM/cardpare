@@ -215,6 +215,30 @@
   .redeem-body{font-size:0.86rem;color:var(--ink);margin-top:9px;line-height:1.55;}
   .verified-tag{display:inline-block;margin-top:9px;font-size:0.7rem;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:2px 9px;border-radius:10px;}
 
+  /* Account / auth */
+  .account-bar{
+    margin:0 22px 18px;padding:14px 16px;border-radius:var(--radius);
+    background:var(--surface);border:1px solid var(--line);font-size:0.85rem;
+  }
+  .account-bar.prompt{background:var(--accent-soft);border-color:var(--accent-soft);}
+  .account-bar-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
+  .account-bar-text{color:var(--ink);}
+  .account-bar-sub{color:var(--ink-soft);font-size:0.78rem;margin-top:2px;}
+  .account-bar input[type="email"]{width:auto;flex:1;min-width:160px;padding:9px 11px;font-size:0.85rem;}
+  .account-bar-form{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .account-bar-msg{font-size:0.8rem;color:var(--accent);margin-top:8px;}
+  .account-bar-close{background:none;border:none;color:var(--ink-soft);font-size:1.1rem;cursor:pointer;line-height:1;padding:0 2px;}
+
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(20,22,26,0.5);z-index:50;
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .modal-box{
+    background:var(--surface);border-radius:16px;padding:26px 24px;max-width:400px;width:100%;
+  }
+  .modal-box h3{margin:0 0 10px;}
+  .modal-box .btn{margin-top:0;}
+
   /* Rewards */
   .reward-est{color:var(--ink-soft);font-weight:400;font-size:0.85em;}
   .reward-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:15px;margin-bottom:12px;}
@@ -281,6 +305,17 @@
     <div class="tab" data-tab="rewards">Rewards</div>
     <div class="tab" data-tab="cards">My Cards</div>
     <div class="tab" data-tab="compare">Compare</div>
+  </div>
+
+  <div class="account-bar" id="accountBar" style="display:none;"></div>
+
+  <div class="modal-overlay" id="importModalOverlay" style="display:none;">
+    <div class="modal-box">
+      <h3>Bring your data with you?</h3>
+      <p class="panel-sub" id="importModalBody" style="margin-bottom:18px;"></p>
+      <button class="btn accent" id="importModalImportBtn">Import my data</button>
+      <button class="btn ghost" id="importModalSkipBtn" style="margin-top:8px;">Start fresh instead</button>
+    </div>
   </div>
 
   <!-- DASHBOARD -->
@@ -446,6 +481,7 @@
   <div class="disclaimer">Rates and terms shown are a hand-curated reference, each dated with a "last verified" mark. Prototype data — confirm current terms with your bank before relying on this for a large purchase.<br><a href="privacy.html" style="color:var(--ink-soft);">Privacy</a> · <a href="terms.html" style="color:var(--ink-soft);">Terms</a></div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const CATS = [
   {id:'fuel', label:'Fuel'}, {id:'upi', label:'UPI / scan & pay'}, {id:'amazon', label:'Amazon'},
@@ -585,6 +621,8 @@ const CARD_DB = [
 
 let heldCards = [], transactions = [], cardRequests = [], myVotes = [], plannedPurchases = [], monthlyLimit = null;
 let openDetails = new Set();
+let localStateLoadedResolve;
+const localStateLoadedPromise = new Promise(res=>{ localStateLoadedResolve = res; });
 
 // Works inside Claude's artifact viewer (window.storage, syncs per account)
 // and falls back to localStorage everywhere else (this browser only, no cross-device sync,
@@ -603,6 +641,139 @@ const storageAdapter = {
     catch(e){ return null; }
   }
 };
+
+// ---------- Accounts (Supabase) ----------
+// Only active on the real deployed site — inside Claude's artifact viewer this
+// stays fully local, exactly as before, matching the existing storageAdapter split.
+const cloudEnabled = !hasClaudeStorage;
+const sb = cloudEnabled
+  ? supabase.createClient('https://bepdjvbddwgcofxrjnwu.supabase.co', 'sb_publishable_wBA_TocjjQ_QBwxJ1ja_wQ_hiCcVmMI')
+  : null;
+let currentUser = null;
+let authHandled = false;
+
+async function loadCloudState(){
+  const [cardsRes, txnRes, plannedRes, profileRes] = await Promise.all([
+    sb.from('user_cards').select('card_id').eq('user_id', currentUser.id),
+    sb.from('transactions').select('*').eq('user_id', currentUser.id),
+    sb.from('planned_purchases').select('*').eq('user_id', currentUser.id),
+    sb.from('profiles').select('monthly_limit').eq('id', currentUser.id).maybeSingle()
+  ]);
+  heldCards = (cardsRes.data || []).map(r=>r.card_id);
+  transactions = (txnRes.data || []).map(r=>({ id:r.id, date:r.date, cat:r.cat, cardId:r.card_id, amt:Number(r.amt), note:r.note||'', source:'manual', emi:r.emi, tenure:r.tenure }));
+  plannedPurchases = (plannedRes.data || []).map(r=>({ id:r.id, name:r.name, cat:r.cat, amt:Number(r.amt), month:r.month }));
+  monthlyLimit = profileRes.data ? profileRes.data.monthly_limit : null;
+}
+
+async function cloudHasAnyData(userId){
+  const [cards, txns, planned] = await Promise.all([
+    sb.from('user_cards').select('id', {count:'exact', head:true}).eq('user_id', userId),
+    sb.from('transactions').select('id', {count:'exact', head:true}).eq('user_id', userId),
+    sb.from('planned_purchases').select('id', {count:'exact', head:true}).eq('user_id', userId)
+  ]);
+  return (cards.count||0) > 0 || (txns.count||0) > 0 || (planned.count||0) > 0;
+}
+
+async function importLocalDataToCloud(){
+  const userId = currentUser.id;
+  const jobs = [];
+  if(heldCards.length) jobs.push(sb.from('user_cards').insert(heldCards.map(id=>({user_id:userId, card_id:id}))));
+  if(transactions.length) jobs.push(sb.from('transactions').insert(transactions.map(t=>({
+    user_id:userId, date:t.date, cat:t.cat, card_id:t.cardId, amt:t.amt, note:t.note||null, emi:!!t.emi, tenure:t.tenure||1
+  }))));
+  if(plannedPurchases.length) jobs.push(sb.from('planned_purchases').insert(plannedPurchases.map(p=>({
+    user_id:userId, name:p.name, cat:p.cat, amt:p.amt, month:p.month||null
+  }))));
+  if(monthlyLimit) jobs.push(sb.from('profiles').update({monthly_limit:monthlyLimit}).eq('id', userId));
+  await Promise.all(jobs);
+}
+
+function showImportModal(){
+  document.getElementById('importModalBody').textContent =
+    `This device has ${heldCards.length} held card${heldCards.length===1?'':'s'} and ${transactions.length} logged transaction${transactions.length===1?'':'s'} saved locally. Bring it into your account, or start this account fresh and keep the local copy as-is.`;
+  document.getElementById('importModalOverlay').style.display = 'flex';
+}
+function hideImportModal(){ document.getElementById('importModalOverlay').style.display = 'none'; }
+
+document.getElementById('importModalImportBtn').addEventListener('click', async ()=>{
+  hideImportModal();
+  await importLocalDataToCloud();
+  await loadCloudState();
+  renderAll();
+  updateAccountUI();
+});
+document.getElementById('importModalSkipBtn').addEventListener('click', async ()=>{
+  hideImportModal();
+  await loadCloudState();
+  renderAll();
+  updateAccountUI();
+});
+
+async function onAuthSessionReady(session){
+  if(!session){ currentUser = null; updateAccountUI(); return; }
+  currentUser = session.user;
+  if(authHandled) { updateAccountUI(); return; }
+  authHandled = true;
+  await localStateLoadedPromise;
+  const hasCloudData = await cloudHasAnyData(currentUser.id);
+  const hasLocalData = heldCards.length>0 || transactions.length>0 || plannedPurchases.length>0;
+  if(!hasCloudData && hasLocalData){
+    showImportModal();
+  } else {
+    await loadCloudState();
+    renderAll();
+  }
+  updateAccountUI();
+}
+
+let signinBannerDismissed = false;
+function updateAccountUI(){
+  const bar = document.getElementById('accountBar');
+  if(!cloudEnabled){ bar.style.display = 'none'; return; }
+  if(currentUser){
+    bar.className = 'account-bar';
+    bar.style.display = 'block';
+    bar.innerHTML = `<div class="account-bar-row"><div class="account-bar-text">Signed in as ${currentUser.email}</div><button class="btn ghost small" id="signOutBtn">Sign out</button></div>`;
+    document.getElementById('signOutBtn').addEventListener('click', async ()=>{
+      await sb.auth.signOut();
+      location.reload();
+    });
+    return;
+  }
+  const eligible = heldCards.length>0 || transactions.length>0;
+  if(!eligible || signinBannerDismissed){ bar.style.display = 'none'; return; }
+  bar.className = 'account-bar prompt';
+  bar.style.display = 'block';
+  bar.innerHTML = `
+    <div class="account-bar-row">
+      <div><div class="account-bar-text">Sign in to save across devices</div><div class="account-bar-sub">Everything you've added stays on this device only, until you do.</div></div>
+      <button class="account-bar-close" id="signinBannerClose" aria-label="Dismiss">×</button>
+    </div>
+    <div class="account-bar-form">
+      <input type="email" id="signinEmail" placeholder="you@email.com">
+      <button class="btn accent small" id="signinSendBtn">Send magic link</button>
+    </div>
+    <div class="account-bar-msg" id="signinMsg" style="display:none;"></div>`;
+  document.getElementById('signinBannerClose').addEventListener('click', ()=>{ signinBannerDismissed = true; updateAccountUI(); });
+  document.getElementById('signinSendBtn').addEventListener('click', async ()=>{
+    const emailEl = document.getElementById('signinEmail');
+    const email = emailEl.value.trim();
+    const msgEl = document.getElementById('signinMsg');
+    if(!email || !email.includes('@')){ emailEl.focus(); return; }
+    try{
+      await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.href } });
+      msgEl.textContent = 'Check your email for a sign-in link.';
+      msgEl.style.display = 'block';
+    }catch(e){
+      msgEl.textContent = 'Something went wrong sending that link — try again in a moment.';
+      msgEl.style.display = 'block';
+    }
+  });
+}
+
+if(cloudEnabled){
+  sb.auth.onAuthStateChange((_event, session)=>{ onAuthSessionReady(session); });
+}
 
 const CARD_STYLE = {
   'hdfc-millennia': {color:'#C0392B', initials:'HM'},
@@ -628,10 +799,19 @@ function cardChip(cardId, size){
 async function loadState(){
   try{ const h = await storageAdapter.get('cardpare:heldCards'); heldCards = h && h.value ? JSON.parse(h.value) : []; }catch(e){ heldCards = []; }
   try{ const t = await storageAdapter.get('cardpare:transactions'); transactions = t && t.value ? JSON.parse(t.value) : []; }catch(e){ transactions = []; }
-  try{ const r = await storageAdapter.get('cardpare:cardRequests', true); cardRequests = r && r.value ? JSON.parse(r.value) : []; }catch(e){ cardRequests = []; }
   try{ const v = await storageAdapter.get('cardpare:myVotes'); myVotes = v && v.value ? JSON.parse(v.value) : []; }catch(e){ myVotes = []; }
   try{ const p = await storageAdapter.get('cardpare:plannedPurchases'); plannedPurchases = p && p.value ? JSON.parse(p.value) : []; }catch(e){ plannedPurchases = []; }
   try{ const l = await storageAdapter.get('cardpare:monthlyLimit'); monthlyLimit = l && l.value ? JSON.parse(l.value) : null; }catch(e){ monthlyLimit = null; }
+  localStateLoadedResolve();
+
+  if(cloudEnabled){
+    // card_requests/waitlist are shared, real data now — always load from Supabase
+    // on the deployed site, whether or not the visitor is signed in.
+    try{ const { data } = await sb.from('card_requests').select('*').order('votes', {ascending:false}); cardRequests = (data||[]).map(r=>({id:r.id, name:r.name, note:r.note||'', votes:r.votes})); }
+    catch(e){ cardRequests = []; }
+  } else {
+    try{ const r = await storageAdapter.get('cardpare:cardRequests', true); cardRequests = r && r.value ? JSON.parse(r.value) : []; }catch(e){ cardRequests = []; }
+  }
   renderAll();
 }
 async function saveHeldCards(){ try{ await storageAdapter.set('cardpare:heldCards', JSON.stringify(heldCards)); }catch(e){} }
@@ -727,13 +907,28 @@ document.getElementById('futBtn').addEventListener('click', async ()=>{
   const amt = parseFloat(document.getElementById('futAmt').value);
   const month = document.getElementById('futMonth').value;
   if(!name || !amt || amt<=0) return;
-  plannedPurchases.push({ id: Date.now(), name, cat, amt, month });
+  if(currentUser){
+    let id = Date.now();
+    try{
+      const { data, error } = await sb.from('planned_purchases').insert({user_id:currentUser.id, name, cat, amt, month:month||null}).select().single();
+      if(error) throw error;
+      id = data.id;
+    }catch(e){ console.error(e); }
+    plannedPurchases.push({ id, name, cat, amt, month });
+  } else {
+    plannedPurchases.push({ id: Date.now(), name, cat, amt, month });
+    await savePlanned();
+  }
   document.getElementById('futName').value=''; document.getElementById('futAmt').value=''; document.getElementById('futMonth').value='';
-  await savePlanned();
   renderFuturePlan();
 });
 
-async function deletePlan(id){ plannedPurchases = plannedPurchases.filter(p=>p.id!==id); await savePlanned(); renderFuturePlan(); }
+async function deletePlan(id){
+  plannedPurchases = plannedPurchases.filter(p=>p.id!==id);
+  if(currentUser){ await sb.from('planned_purchases').delete().eq('id', id).eq('user_id', currentUser.id); }
+  else { await savePlanned(); }
+  renderFuturePlan();
+}
 
 function useForLog(cat, amt, cardId){
   document.querySelector('.tab[data-tab="audit"]').click();
@@ -811,11 +1006,25 @@ document.getElementById('auBtn').addEventListener('click', async ()=>{
   if(!amt || amt<=0 || !cardId) return;
   if(isEmi && (!tenure || tenure<2)){ tenureEl.focus(); return; }
 
-  transactions.push({ id: Date.now(), date: new Date(date).toISOString(), cat, cardId, amt, note, source:'manual', emi:isEmi, tenure: isEmi?tenure:1 });
+  const isoDate = new Date(date).toISOString();
+  if(currentUser){
+    let id = Date.now();
+    try{
+      const { data, error } = await sb.from('transactions').insert({
+        user_id:currentUser.id, date:isoDate, cat, card_id:cardId, amt, note:note||null, emi:isEmi, tenure: isEmi?tenure:1
+      }).select().single();
+      if(error) throw error;
+      id = data.id;
+    }catch(e){ console.error(e); }
+    transactions.push({ id, date:isoDate, cat, cardId, amt, note, source:'manual', emi:isEmi, tenure: isEmi?tenure:1 });
+  } else {
+    transactions.push({ id: Date.now(), date: isoDate, cat, cardId, amt, note, source:'manual', emi:isEmi, tenure: isEmi?tenure:1 });
+    await saveTransactions();
+  }
   amtEl.value=''; document.getElementById('auNote').value=''; tenureEl.value='';
   emiCheck.checked=false; tenureGroup.style.display='none'; amtLabel.textContent='Amount (₹)';
-  await saveTransactions();
   renderAudit();
+  renderDashboard();
 });
 
 function verdictFor(cat, cardId, amt){
@@ -854,7 +1063,12 @@ function renderAudit(){
   listEl.innerHTML = html || '<div class="empty-hint">Nothing logged yet — add your first spend above.</div>';
 }
 
-async function deleteTxn(id){ transactions = transactions.filter(t=>t.id!==id); await saveTransactions(); renderAudit(); renderDashboard(); }
+async function deleteTxn(id){
+  transactions = transactions.filter(t=>t.id!==id);
+  if(currentUser){ await sb.from('transactions').delete().eq('id', id).eq('user_id', currentUser.id); }
+  else { await saveTransactions(); }
+  renderAudit(); renderDashboard();
+}
 
 // ---------- Dashboard (EMI-aware) ----------
 function expandRowsForMonth(monthDate){
@@ -1016,7 +1230,8 @@ function renderBudget(totalSpend){
 document.getElementById('budgetSaveBtn').addEventListener('click', async ()=>{
   const val = parseFloat(document.getElementById('budgetInput').value);
   monthlyLimit = (val && val>0) ? val : null;
-  await saveLimit();
+  if(currentUser){ await sb.from('profiles').update({monthly_limit:monthlyLimit}).eq('id', currentUser.id); }
+  else { await saveLimit(); }
   document.getElementById('budgetInput').value = '';
   renderDashboard();
 });
@@ -1119,39 +1334,56 @@ function toggleDetails(id){
   renderCardPicker();
 }
 async function toggleCard(id){
-  if(heldCards.includes(id)) heldCards = heldCards.filter(x=>x!==id); else heldCards.push(id);
-  await saveHeldCards();
+  const willHold = !heldCards.includes(id);
+  if(willHold) heldCards.push(id); else heldCards = heldCards.filter(x=>x!==id);
+  if(currentUser){
+    if(willHold) await sb.from('user_cards').insert({user_id:currentUser.id, card_id:id});
+    else await sb.from('user_cards').delete().eq('user_id', currentUser.id).eq('card_id', id);
+  } else {
+    await saveHeldCards();
+  }
   renderAll();
 }
 
 // ---------- Card Requests ----------
-if(!hasClaudeStorage){
-  document.getElementById('reqShareNote').textContent = "Saved on this device so you can keep track — this early build doesn't have a shared board yet, so each submission also opens an email to send it to us directly.";
+if(hasClaudeStorage){
+  // Inside Claude's artifact viewer, requests still only sync within your own Claude
+  // account (window.storage), not across every visitor — the default copy in the HTML
+  // ("shared across everyone") only holds on the real deployed site, where this now
+  // writes to a real shared database.
+  document.getElementById('reqShareNote').textContent = "Saved to your Claude account so you can keep track across sessions — on the live cardpare.com site this is a real shared board everyone sees.";
 }
 
 document.getElementById('reqBtn').addEventListener('click', async ()=>{
   const name = document.getElementById('reqName').value.trim();
   const note = document.getElementById('reqNote').value.trim();
   if(!name) return;
-  cardRequests.push({ id: Date.now(), name, note, votes: 1 });
-  myVotes.push(cardRequests[cardRequests.length-1].id);
   document.getElementById('reqName').value=''; document.getElementById('reqNote').value='';
-  await saveCardRequests(); await saveMyVotes();
-  renderRequests();
 
-  if(!hasClaudeStorage){
-    // TODO: replace hello@cardpare.com before launch, or swap for a real endpoint later.
-    const subject = encodeURIComponent('Cardpare card request: ' + name);
-    const body = encodeURIComponent(`Card requested: ${name}\nNote: ${note || '(none)'}`);
-    window.location.href = `mailto:hello@cardpare.com?subject=${subject}&body=${body}`;
+  if(cloudEnabled){
+    try{
+      const { data, error } = await sb.from('card_requests').insert({name, note: note||null}).select().single();
+      if(error) throw error;
+      cardRequests.push({ id:data.id, name, note, votes:data.votes });
+      myVotes.push(data.id);
+    }catch(e){ console.error(e); }
+  } else {
+    cardRequests.push({ id: Date.now(), name, note, votes: 1 });
+    myVotes.push(cardRequests[cardRequests.length-1].id);
+    await saveCardRequests();
   }
+  await saveMyVotes();
+  renderRequests();
 });
 async function upvoteRequest(id){
   const req = cardRequests.find(r=>r.id===id);
   if(!req) return;
-  if(myVotes.includes(id)){ req.votes = Math.max(0, req.votes-1); myVotes = myVotes.filter(v=>v!==id); }
-  else { req.votes += 1; myVotes.push(id); }
-  await saveCardRequests(); await saveMyVotes();
+  const voting = !myVotes.includes(id);
+  if(voting){ req.votes += 1; myVotes.push(id); } else { req.votes = Math.max(0, req.votes-1); myVotes = myVotes.filter(v=>v!==id); }
+
+  if(cloudEnabled){ await sb.rpc('adjust_card_request_votes', {request_id:id, delta: voting?1:-1}); }
+  else { await saveCardRequests(); }
+  await saveMyVotes();
   renderRequests();
 }
 function renderRequests(){
@@ -1173,6 +1405,7 @@ function renderAll(){
   renderRequests();
   renderFuturePlan();
   renderCompare();
+  updateAccountUI();
 }
 
 // ---------- Compare ----------
