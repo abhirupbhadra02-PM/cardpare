@@ -22,7 +22,8 @@
   body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
   .wrap{max-width:760px;margin:0 auto;padding-bottom:70px;}
 
-  .topbar{display:flex;align-items:center;justify-content:space-between;padding:20px 22px 16px;background:var(--bg);}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px 22px 16px;background:var(--bg);}
+  .topbar-left{display:flex;align-items:center;gap:10px;}
   .brand{font-family:'Fraunces',serif;font-weight:700;font-size:1.3rem;letter-spacing:-0.015em;}
   .brand span{color:var(--accent);}
 
@@ -30,11 +31,46 @@
   .hero h1{font-family:'Fraunces',serif;font-weight:500;font-size:1.85rem;line-height:1.22;margin:0 0 10px;letter-spacing:-0.015em;max-width:26ch;}
   .hero p{margin:0;color:var(--ink-soft);font-size:0.94rem;line-height:1.6;max-width:46ch;}
 
-  .tabs{display:flex;gap:2px;padding:0 22px;background:var(--bg);position:sticky;top:0;z-index:5;border-bottom:1px solid var(--line);overflow-x:auto;}
-  .tab{padding:12px 14px;font-size:0.85rem;font-weight:600;color:var(--ink-soft);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
-  .tab.active{color:var(--ink);border-bottom-color:var(--accent);}
+  /* Responsive nav: an off-canvas drawer on phone widths, a sticky sidebar from
+     860px up. Same markup and .tab click-handling either way — only position,
+     size and the drawer chrome change between the two, via the media query below. */
+  .app-shell{position:relative;padding:0 22px;}
+  .hamburger-btn{
+    display:flex;align-items:center;justify-content:center;width:34px;height:34px;flex-shrink:0;
+    border:1px solid var(--line);border-radius:8px;background:var(--surface);cursor:pointer;padding:0;
+  }
+  .nav-backdrop{display:none;position:fixed;inset:0;background:rgba(20,22,26,0.35);z-index:35;}
+  .nav-backdrop.open{display:block;}
+  .tabs{
+    display:flex;flex-direction:column;gap:2px;
+    position:fixed;top:0;left:-260px;height:100%;width:240px;z-index:40;
+    background:var(--surface);border-right:1px solid var(--line);
+    padding:16px 10px 20px;overflow-y:auto;box-sizing:border-box;
+    transition:left 0.22s ease;box-shadow:2px 0 20px rgba(20,22,26,0.1);
+  }
+  .tabs.open{left:0;}
+  .nav-drawer-header{display:flex;align-items:center;justify-content:space-between;padding:2px 6px 14px;margin-bottom:6px;border-bottom:1px solid var(--line);}
+  .nav-drawer-title{font-family:'Fraunces',serif;font-weight:500;font-size:0.95rem;}
+  .nav-close-btn{background:none;border:none;font-size:1.3rem;color:var(--ink-soft);cursor:pointer;line-height:1;padding:0 2px;}
+  .tab{padding:12px 14px;font-size:0.9rem;font-weight:600;color:var(--ink-soft);cursor:pointer;border-radius:8px;white-space:nowrap;}
+  .tab.active{color:var(--accent);background:var(--accent-soft);}
+  .main-col{min-width:0;}
 
-  .panel{display:none;padding:26px 22px;}
+  @media (min-width:860px){
+    .wrap{max-width:960px;}
+    .app-shell{display:flex;gap:30px;align-items:flex-start;padding:0 22px;}
+    .hamburger-btn{display:none;}
+    .nav-backdrop{display:none !important;}
+    .nav-drawer-header{display:none;}
+    .tabs{
+      position:sticky;top:16px;left:auto;height:auto;width:180px;flex-shrink:0;
+      box-shadow:none;transition:none;overflow:visible;padding:0;border-right:none;
+    }
+    .main-col{flex:1;}
+  }
+
+  .panel{display:none;padding:26px 0;}
+  .main-col > .account-bar{margin-left:0;margin-right:0;}
   .panel.active{display:block;}
 
   h2{font-family:'Fraunces',serif;font-weight:500;font-size:1.25rem;margin:0 0 6px;letter-spacing:-0.01em;}
@@ -229,6 +265,36 @@
   .account-bar-msg{font-size:0.8rem;color:var(--accent);margin-top:8px;}
   .account-bar-close{background:none;border:none;color:var(--ink-soft);font-size:1.1rem;cursor:pointer;line-height:1;padding:0 2px;}
 
+  /* Header account area: sign-in popover when signed out, avatar + dropdown when signed in */
+  .header-actions{position:relative;}
+  .signin-menu, .profile-menu{position:relative;}
+  .avatar-btn{
+    width:34px;height:34px;border-radius:50%;background:var(--accent);color:#fff;border:none;
+    font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:0.76rem;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;padding:0;
+  }
+  .signin-popover, .profile-dropdown{
+    display:none;position:absolute;top:44px;right:0;min-width:220px;background:var(--surface);
+    border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px rgba(20,22,26,0.14);
+    padding:10px;z-index:45;
+  }
+  .signin-popover.open, .profile-dropdown.open{display:block;}
+  .signin-popover input{margin-bottom:8px;}
+  .profile-dropdown-email{font-size:0.78rem;color:var(--ink-soft);padding:6px 10px 10px;word-break:break-all;border-bottom:1px solid var(--line);margin-bottom:6px;}
+  .profile-dropdown-item{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;
+    padding:9px 10px;border-radius:8px;font-size:0.86rem;color:var(--ink);background:none;border:none;
+    cursor:pointer;font-family:'Inter',sans-serif;text-decoration:none;box-sizing:border-box;
+  }
+  .profile-dropdown-item:hover{background:var(--bg);}
+  .profile-dropdown-item.disabled{color:var(--ink-soft);cursor:default;}
+  .profile-dropdown-item.disabled:hover{background:none;}
+  .profile-dropdown-divider{border-top:1px solid var(--line);margin:6px 2px;}
+  .soon-pill{
+    font-size:0.6rem;font-weight:700;color:var(--ink-soft);background:var(--bg);border:1px solid var(--line);
+    padding:2px 6px;border-radius:8px;text-transform:uppercase;letter-spacing:0.03em;flex-shrink:0;
+  }
+
   .modal-overlay{
     position:fixed;inset:0;background:rgba(20,22,26,0.5);z-index:50;
     display:flex;align-items:center;justify-content:center;padding:20px;
@@ -290,35 +356,41 @@
 <body>
 <div class="wrap">
 
-  <div class="topbar"><div class="brand">Card<span>pare</span></div></div>
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" id="hamburgerBtn" aria-label="Open menu">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#14161A" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <div class="brand">Card<span>pare</span></div>
+    </div>
+    <div class="header-actions" id="headerActions"></div>
+  </div>
 
   <div class="hero">
     <h1>Know which card to use, and catch it when you don't.</h1>
     <p>A planning and audit tool for people who hold multiple cards and want every swipe to earn what it should.</p>
   </div>
 
-  <div class="tabs">
-    <div class="tab active" data-tab="dash">Dashboard</div>
-    <div class="tab" data-tab="plan">Plan</div>
-    <div class="tab" data-tab="audit">Log &amp; Audit</div>
-    <div class="tab" data-tab="redeem">Redemption</div>
-    <div class="tab" data-tab="rewards">Rewards</div>
-    <div class="tab" data-tab="cards">My Cards</div>
-    <div class="tab" data-tab="compare">Compare</div>
-  </div>
-
-  <div class="account-bar" id="accountBar" style="display:none;"></div>
-
-  <div class="modal-overlay" id="importModalOverlay" style="display:none;">
-    <div class="modal-box">
-      <h3>Bring your data with you?</h3>
-      <p class="panel-sub" id="importModalBody" style="margin-bottom:18px;"></p>
-      <button class="btn accent" id="importModalImportBtn">Import my data</button>
-      <button class="btn ghost" id="importModalSkipBtn" style="margin-top:8px;">Start fresh instead</button>
+  <div class="nav-backdrop" id="navBackdrop"></div>
+  <div class="app-shell">
+    <div class="tabs" id="navList">
+      <div class="nav-drawer-header">
+        <span class="nav-drawer-title">Menu</span>
+        <button class="nav-close-btn" id="navCloseBtn" aria-label="Close menu">×</button>
+      </div>
+      <div class="tab active" data-tab="dash">Dashboard</div>
+      <div class="tab" data-tab="plan">Plan</div>
+      <div class="tab" data-tab="audit">Log &amp; Audit</div>
+      <div class="tab" data-tab="redeem">Redemption</div>
+      <div class="tab" data-tab="rewards">Rewards</div>
+      <div class="tab" data-tab="cards">My Cards</div>
+      <div class="tab" data-tab="compare">Compare</div>
     </div>
-  </div>
 
-  <!-- DASHBOARD -->
+    <div class="main-col">
+    <div class="account-bar" id="accountBar" style="display:none;"></div>
+
+    <!-- DASHBOARD -->
   <div class="panel active" id="panel-dash">
     <h2>This month, at a glance</h2>
     <p class="panel-sub">A quick read on how your spend has actually mapped to your cards.</p>
@@ -476,6 +548,18 @@
     <div class="field-group"><span class="field-label">Card A</span><select id="cmpA"></select></div>
     <div class="field-group"><span class="field-label">Card B</span><select id="cmpB"></select></div>
     <div id="compareResult"></div>
+  </div>
+
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="importModalOverlay" style="display:none;">
+    <div class="modal-box">
+      <h3>Bring your data with you?</h3>
+      <p class="panel-sub" id="importModalBody" style="margin-bottom:18px;"></p>
+      <button class="btn accent" id="importModalImportBtn">Import my data</button>
+      <button class="btn ghost" id="importModalSkipBtn" style="margin-top:8px;">Start fresh instead</button>
+    </div>
   </div>
 
   <div class="disclaimer">Rates and terms shown are a hand-curated reference, each dated with a "last verified" mark. Prototype data — confirm current terms with your bank before relying on this for a large purchase.<br><a href="privacy.html" style="color:var(--ink-soft);">Privacy</a> · <a href="terms.html" style="color:var(--ink-soft);">Terms</a></div>
@@ -645,6 +729,7 @@ const storageAdapter = {
 // ---------- Accounts (Supabase) ----------
 // Only active on the real deployed site — inside Claude's artifact viewer this
 // stays fully local, exactly as before, matching the existing storageAdapter split.
+const ADMIN_EMAIL = 'abhirup.bhadra02@gmail.com';
 const cloudEnabled = !hasClaudeStorage;
 const sb = cloudEnabled
   ? supabase.createClient('https://bepdjvbddwgcofxrjnwu.supabase.co', 'sb_publishable_wBA_TocjjQ_QBwxJ1ja_wQ_hiCcVmMI')
@@ -726,20 +811,80 @@ async function onAuthSessionReady(session){
   updateAccountUI();
 }
 
-let signinBannerDismissed = false;
-function updateAccountUI(){
-  const bar = document.getElementById('accountBar');
-  if(!cloudEnabled){ bar.style.display = 'none'; return; }
+function initialsFor(email){ return (email||'??').slice(0,2).toUpperCase(); }
+
+// The header is the one place sign-in/sign-out/profile actually live. The
+// dashboard banner below is just a contextual nudge that opens this same popover
+// rather than keeping its own separate sign-in form.
+function renderHeaderActions(){
+  const el = document.getElementById('headerActions');
+  if(!cloudEnabled){ el.style.display = 'none'; return; }
+  el.style.display = '';
+
   if(currentUser){
-    bar.className = 'account-bar';
-    bar.style.display = 'block';
-    bar.innerHTML = `<div class="account-bar-row"><div class="account-bar-text">Signed in as ${currentUser.email}</div><button class="btn ghost small" id="signOutBtn">Sign out</button></div>`;
-    document.getElementById('signOutBtn').addEventListener('click', async ()=>{
+    const isAdmin = currentUser.email === ADMIN_EMAIL;
+    el.innerHTML = `
+      <div class="profile-menu">
+        <button class="avatar-btn" id="avatarBtn" aria-label="Account menu">${initialsFor(currentUser.email)}</button>
+        <div class="profile-dropdown" id="profileDropdown">
+          <div class="profile-dropdown-email">${currentUser.email}</div>
+          ${isAdmin ? '<a class="profile-dropdown-item" href="admin.html">Admin panel</a>' : ''}
+          <div class="profile-dropdown-item disabled">Settings <span class="soon-pill">Coming soon</span></div>
+          <div class="profile-dropdown-item disabled">Account <span class="soon-pill">Coming soon</span></div>
+          <div class="profile-dropdown-divider"></div>
+          <button class="profile-dropdown-item" id="headerSignOutBtn">Sign out</button>
+        </div>
+      </div>`;
+    document.getElementById('avatarBtn').addEventListener('click', (e)=>{
+      e.stopPropagation();
+      document.getElementById('profileDropdown').classList.toggle('open');
+    });
+    document.getElementById('headerSignOutBtn').addEventListener('click', async ()=>{
       await sb.auth.signOut();
       location.reload();
     });
-    return;
+  } else {
+    el.innerHTML = `
+      <div class="signin-menu">
+        <button class="btn ghost small" id="headerSignInBtn">Sign in</button>
+        <div class="signin-popover" id="signinPopover">
+          <input type="email" id="headerSigninEmail" placeholder="you@email.com">
+          <button class="btn accent small" id="headerSigninSendBtn">Send magic link</button>
+          <div class="account-bar-msg" id="headerSigninMsg" style="display:none;"></div>
+        </div>
+      </div>`;
+    document.getElementById('headerSignInBtn').addEventListener('click', (e)=>{
+      e.stopPropagation();
+      document.getElementById('signinPopover').classList.toggle('open');
+    });
+    document.getElementById('headerSigninSendBtn').addEventListener('click', async ()=>{
+      const emailEl = document.getElementById('headerSigninEmail');
+      const email = emailEl.value.trim();
+      const msgEl = document.getElementById('headerSigninMsg');
+      if(!email || !email.includes('@')){ emailEl.focus(); return; }
+      try{
+        await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.href } });
+        msgEl.textContent = 'Check your email for a sign-in link.';
+        msgEl.style.display = 'block';
+      }catch(e){
+        msgEl.textContent = 'Something went wrong sending that link — try again in a moment.';
+        msgEl.style.display = 'block';
+      }
+    });
   }
+}
+document.addEventListener('click', (e)=>{
+  const dd = document.getElementById('profileDropdown');
+  if(dd && !e.target.closest('.profile-menu')) dd.classList.remove('open');
+  const pop = document.getElementById('signinPopover');
+  if(pop && !e.target.closest('.signin-menu')) pop.classList.remove('open');
+});
+
+let signinBannerDismissed = false;
+function updateAccountUI(){
+  renderHeaderActions();
+  const bar = document.getElementById('accountBar');
+  if(!cloudEnabled || currentUser){ bar.style.display = 'none'; return; }
   const eligible = heldCards.length>0 || transactions.length>0;
   if(!eligible || signinBannerDismissed){ bar.style.display = 'none'; return; }
   bar.className = 'account-bar prompt';
@@ -749,27 +894,30 @@ function updateAccountUI(){
       <div><div class="account-bar-text">Sign in to save across devices</div><div class="account-bar-sub">Everything you've added stays on this device only, until you do.</div></div>
       <button class="account-bar-close" id="signinBannerClose" aria-label="Dismiss">×</button>
     </div>
-    <div class="account-bar-form">
-      <input type="email" id="signinEmail" placeholder="you@email.com">
-      <button class="btn accent small" id="signinSendBtn">Send magic link</button>
-    </div>
-    <div class="account-bar-msg" id="signinMsg" style="display:none;"></div>`;
+    <button class="btn accent small" id="signinBannerOpenBtn" style="margin-top:10px;width:auto;padding:9px 16px;">Sign in</button>`;
   document.getElementById('signinBannerClose').addEventListener('click', ()=>{ signinBannerDismissed = true; updateAccountUI(); });
-  document.getElementById('signinSendBtn').addEventListener('click', async ()=>{
-    const emailEl = document.getElementById('signinEmail');
-    const email = emailEl.value.trim();
-    const msgEl = document.getElementById('signinMsg');
-    if(!email || !email.includes('@')){ emailEl.focus(); return; }
-    try{
-      await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.href } });
-      msgEl.textContent = 'Check your email for a sign-in link.';
-      msgEl.style.display = 'block';
-    }catch(e){
-      msgEl.textContent = 'Something went wrong sending that link — try again in a moment.';
-      msgEl.style.display = 'block';
-    }
+  document.getElementById('signinBannerOpenBtn').addEventListener('click', (e)=>{
+    // Open the popover directly rather than simulating a click on headerSignInBtn —
+    // a simulated click's event still bubbles to the document-level "click outside
+    // closes the popover" listener afterwards and would immediately close it again.
+    e.stopPropagation();
+    document.getElementById('signinPopover')?.classList.add('open');
+    document.getElementById('headerSigninEmail')?.focus();
   });
 }
+
+// Off-canvas nav drawer (phone widths only — CSS turns this into a static
+// sidebar at 860px+, where these controls are hidden and harmless as no-ops).
+function closeNavDrawer(){
+  document.getElementById('navList').classList.remove('open');
+  document.getElementById('navBackdrop').classList.remove('open');
+}
+document.getElementById('hamburgerBtn').addEventListener('click', ()=>{
+  document.getElementById('navList').classList.add('open');
+  document.getElementById('navBackdrop').classList.add('open');
+});
+document.getElementById('navCloseBtn').addEventListener('click', closeNavDrawer);
+document.getElementById('navBackdrop').addEventListener('click', closeNavDrawer);
 
 if(cloudEnabled){
   sb.auth.onAuthStateChange((_event, session)=>{ onAuthSessionReady(session); });
@@ -830,6 +978,7 @@ document.querySelectorAll('.tab').forEach(t=>{
     if(t.dataset.tab==='dash') renderDashboard();
     if(t.dataset.tab==='compare') renderCompare();
     if(t.dataset.tab==='rewards') renderRewards();
+    closeNavDrawer();
   });
 });
 document.getElementById('onboardCta').addEventListener('click', ()=>{
