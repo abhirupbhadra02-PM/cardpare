@@ -291,6 +291,7 @@
   <p style="margin-top:10px;"><a href="privacy.html" style="color:var(--ink-soft);">Privacy</a> · <a href="terms.html" style="color:var(--ink-soft);">Terms</a></p>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const _rawStorage = (typeof window !== 'undefined') ? window.storage : null;
 const hasClaudeStorage = !!(_rawStorage && typeof _rawStorage.get === 'function');
@@ -306,6 +307,9 @@ const storageAdapter = {
     catch(e){ return null; }
   }
 };
+const sb = (!hasClaudeStorage)
+  ? supabase.createClient('https://bepdjvbddwgcofxrjnwu.supabase.co', 'sb_publishable_wBA_TocjjQ_QBwxJ1ja_wQ_hiCcVmMI')
+  : null;
 
 document.getElementById('wlBtn').addEventListener('click', async ()=>{
   const emailEl = document.getElementById('wlEmail');
@@ -321,12 +325,9 @@ document.getElementById('wlBtn').addEventListener('click', async ()=>{
       await storageAdapter.set('cardpare:waitlist', JSON.stringify(list), true);
     }catch(e){ console.error(e); }
   } else {
-    // On the real domain there's no shared backend yet — email is the reliable path.
-    // TODO: replace hello@cardpare.com with your real address before launch,
-    // or swap this for a form endpoint once one exists.
-    const subject = encodeURIComponent('Cardpare early access');
-    const body = encodeURIComponent(`Please add me to the Cardpare waitlist.\n\nMy email: ${email}`);
-    window.location.href = `mailto:hello@cardpare.com?subject=${subject}&body=${body}`;
+    // Real shared signup now — a duplicate email just no-ops rather than erroring.
+    try{ await sb.from('waitlist').insert({email}); }
+    catch(e){ console.error(e); }
   }
 
   document.getElementById('wlSuccess').style.display = 'block';
