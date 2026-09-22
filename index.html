@@ -54,15 +54,21 @@
   /* Ledger visual */
   .hero-visual{
     margin-top:56px;background:var(--surface);border:1px solid var(--line);border-radius:16px;
-    padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:14px;
+    padding:24px;
   }
+  .hv-kicker{
+    font-size:0.68rem;font-weight:600;color:var(--ink-soft);text-transform:uppercase;
+    letter-spacing:0.04em;margin-bottom:16px;display:flex;align-items:center;gap:7px;
+  }
+  .hv-kicker::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block;}
+  .hv-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
   .hv-card{border:1px solid var(--line);border-radius:10px;padding:16px;}
   .hv-label{font-size:0.68rem;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:8px;}
   .hv-value{font-family:'IBM Plex Mono',monospace;font-size:1.5rem;font-weight:600;}
   .hv-value.accent{color:var(--accent);}
   .hv-value.warn{color:var(--warn);}
   .hv-sub{font-size:0.76rem;color:var(--ink-soft);margin-top:6px;}
-  @media (max-width:600px){ .hero-visual{grid-template-columns:1fr;} }
+  @media (max-width:600px){ .hv-grid{grid-template-columns:1fr;} }
 
   /* Problem */
   .problem-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:36px;}
@@ -146,20 +152,23 @@
     <h1 class="display">Know which card to use. And catch it when you don't.</h1>
     <p class="hero-sub">You hold five or six cards. One of them is quietly earning nothing while another sits idle. Cardpare tells you which to use before you pay, and shows you exactly what it cost when you didn't.</p>
     <div class="hero-ctas">
-      <a class="btn-primary" href="app.html">Try the live prototype</a>
+      <a class="btn-primary" href="app.html">Try the app</a>
       <a class="btn-secondary" href="#waitlist">Get early access</a>
     </div>
 
     <div class="hero-visual">
-      <div class="hv-card">
-        <div class="hv-label">Earned this month</div>
-        <div class="hv-value accent">₹1,240</div>
-        <div class="hv-sub">Across everything you logged</div>
-      </div>
-      <div class="hv-card">
-        <div class="hv-label">Left on the table</div>
-        <div class="hv-value warn">₹385</div>
-        <div class="hv-sub">One dinner, wrong card</div>
+      <div class="hv-kicker">What your dashboard looks like — sample data</div>
+      <div class="hv-grid">
+        <div class="hv-card">
+          <div class="hv-label">Earned this month</div>
+          <div class="hv-value accent">₹1,240</div>
+          <div class="hv-sub">Across everything you logged</div>
+        </div>
+        <div class="hv-card">
+          <div class="hv-label">Left on the table</div>
+          <div class="hv-value warn">₹385</div>
+          <div class="hv-sub">One dinner, wrong card</div>
+        </div>
       </div>
     </div>
   </div>
