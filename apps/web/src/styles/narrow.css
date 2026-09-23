@@ -1,0 +1,33 @@
+/* Scoped from the legacy admin.html; shared by the admin and sign-in pages. Every selector is prefixed with the page class so
+   pages can't restyle each other now that they share one app. */
+.page-narrow .wrap{max-width:640px;margin:0 auto;padding:40px 22px 70px;}
+.page-narrow .brand{font-family:'Fraunces',serif;font-weight:700;font-size:1.2rem;margin-bottom:6px;}
+.page-narrow .brand span{color:var(--accent);}
+.page-narrow .kicker{font-size:0.78rem;color:var(--ink-soft);margin-bottom:34px;}
+.page-narrow h1{font-family:'Fraunces',serif;font-weight:500;font-size:1.6rem;margin:0 0 8px;letter-spacing:-0.015em;}
+.page-narrow p.sub{color:var(--ink-soft);font-size:0.9rem;line-height:1.6;margin:0 0 24px;max-width:48ch;}
+.page-narrow .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:16px;}
+.page-narrow input{width:100%;padding:12px 13px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-family:'Inter',sans-serif;font-size:0.95rem;color:var(--ink);margin-bottom:10px;}
+.page-narrow .btn{width:100%;padding:13px;border:none;border-radius:8px;background:var(--ink);color:var(--surface);font-weight:600;font-size:0.92rem;cursor:pointer;}
+.page-narrow .btn.accent{background:var(--accent);}
+.page-narrow .msg{font-size:0.85rem;color:var(--accent);margin-top:10px;}
+.page-narrow .msg.err{color:var(--warn);}
+.page-narrow .denied{background:var(--warn-soft);color:var(--warn);border-radius:var(--radius);padding:20px;font-size:0.9rem;line-height:1.6;}
+.page-narrow .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:26px;}
+.page-narrow .stat-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;}
+.page-narrow .stat-card .label{font-size:0.72rem;color:var(--ink-soft);font-weight:600;margin-bottom:6px;}
+.page-narrow .stat-card .value{font-family:'IBM Plex Mono',monospace;font-size:1.5rem;font-weight:600;color:var(--accent);}
+.page-narrow h2{font-family:'Fraunces',serif;font-weight:500;font-size:1.1rem;margin:28px 0 12px;}
+.page-narrow .row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:0.88rem;}
+.page-narrow .row:last-child{border-bottom:none;}
+.page-narrow .row .val{font-family:'IBM Plex Mono',monospace;font-weight:600;}
+.page-narrow .empty{color:var(--ink-soft);font-size:0.85rem;padding:14px 0;}
+.page-narrow .signout{background:none;border:none;color:var(--ink-soft);font-size:0.8rem;cursor:pointer;text-decoration:underline;padding:0;margin-top:4px;}
+.page-narrow .admin-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.page-narrow .back-link{font-size:0.8rem;color:var(--ink-soft);text-decoration:underline;}
+.page-narrow .auth-links{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px;font-size:0.84rem;}
+.page-narrow .link-btn{background:none;border:none;padding:0;color:var(--accent);font-family:'Inter',sans-serif;font-size:0.84rem;font-weight:600;cursor:pointer;text-decoration:none;}
+.page-narrow .field-label{display:block;font-size:0.72rem;color:var(--ink-soft);font-weight:600;margin:0 0 6px;}
+.page-narrow .hint{font-size:0.78rem;color:var(--ink-soft);margin:-4px 0 12px;line-height:1.5;}
+.page-narrow .btn:disabled{opacity:0.6;cursor:default;}
+.page-narrow input.code{font-family:'IBM Plex Mono',monospace;font-size:1.3rem;letter-spacing:0.3em;text-align:center;}
