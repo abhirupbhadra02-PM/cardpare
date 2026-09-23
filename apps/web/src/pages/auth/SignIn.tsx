@@ -6,10 +6,12 @@ import { useAuth } from '../../auth/AuthProvider';
 import { sb } from '../../lib/supabase';
 import '../../styles/narrow.css';
 
-// Email + password, with 6-digit emailed codes (not links) for confirming a new
-// account and resetting a password — so an installed home-screen app never has
-// to hand off to a browser to finish signing in.
-type Mode = 'signin' | 'signup' | 'verify' | 'forgot' | 'reset';
+// Email + password. Confirming a new account and resetting a password work with
+// whatever Supabase emails: a link (Supabase's built-in emails) or a 6-digit code
+// (once custom email templates are set up — codes keep the home-screen app from
+// handing off to a browser). Signing in itself is always email + password, so an
+// installed app stays signed in either way.
+type Mode = 'signin' | 'signup' | 'verify' | 'forgot' | 'reset' | 'newpassword';
 
 function safeNext(raw: string | null): string {
   return raw && raw.startsWith('/') && !raw.startsWith('//') ? raw : '/app';
@@ -21,12 +23,12 @@ function friendly(e: AuthError | Error): string {
     case 'invalid_credentials':
       return "That email and password don't match. If you first signed in with an email link, use \"Forgot password\" to set a password.";
     case 'email_not_confirmed':
-      return 'Please confirm your email first — we just sent you a new code.';
+      return "Your email isn't confirmed yet. Tap the link in the email we sent (check spam), then try again.";
     case 'otp_expired':
       return 'That code has expired or is wrong. Ask for a new one below.';
     case 'over_email_send_rate_limit':
     case 'over_request_rate_limit':
-      return 'Too many attempts in a short time. Wait a minute and try again.';
+      return 'Too many attempts in a short time. Wait a few minutes and try again.';
     case 'weak_password':
       return `Choose a stronger password — at least ${MIN_PASSWORD_LENGTH} characters.`;
     case 'user_already_exists':
@@ -38,12 +40,12 @@ function friendly(e: AuthError | Error): string {
 }
 
 export default function SignIn() {
-  const { user, ready } = useAuth();
+  const { user, ready, passwordRecovery, linkError, clearLinkState } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const next = safeNext(params.get('next'));
 
-  const [mode, setMode] = useState<Mode>('signin');
+  const [chosenMode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
@@ -52,25 +54,34 @@ export default function SignIn() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
-  // Signed in (including right after a successful code check) → go where they were headed.
-  // Not during 'reset': a recovery code signs you in, but the new password isn't set yet.
-  useEffect(() => {
-    if (ready && user && mode !== 'reset') navigate(next, { replace: true });
-  }, [ready, user, mode, next, navigate]);
+  // Arriving from a reset link (or a reset code) means: signed in, new password still needed.
+  const mode: Mode = passwordRecovery ? 'newpassword' : chosenMode;
 
-  const go = (m: Mode) => { setMode(m); setError(null); setInfo(null); setCode(''); };
+  // Signed in → go where they were headed. Not mid-reset: the new password isn't set yet.
+  useEffect(() => {
+    if (ready && user && !passwordRecovery && mode !== 'reset') navigate(next, { replace: true });
+  }, [ready, user, passwordRecovery, mode, next, navigate]);
+
+  const linkNotice = linkError
+    ? 'That email link has expired or was already used. Request a new one below.'
+    : null;
+
+  const go = (m: Mode) => { setMode(m); setError(null); setInfo(null); setCode(''); if (linkError) clearLinkState(); };
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true); setError(null); setInfo(null);
+    if (linkError) clearLinkState();
     try { await fn(); } catch (e) { setError(friendly(e as AuthError)); } finally { setBusy(false); }
   };
+
+  const finishPasswordChange = () => { clearLinkState(); navigate(next, { replace: true }); };
 
   const onSignIn = () => run(async () => {
     const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
     if (error?.code === 'email_not_confirmed') {
-      await sb.auth.resend({ type: 'signup', email: email.trim() });
+      await sb.auth.resend({ type: 'signup', email: email.trim(), options: { emailRedirectTo: `${window.location.origin}/app` } });
       go('verify');
-      setInfo(`We've sent a new 6-digit code to ${email.trim()}.`);
+      setInfo(`We've sent a fresh confirmation email to ${email.trim()}.`);
       return;
     }
     if (error) throw error;
@@ -78,7 +89,9 @@ export default function SignIn() {
 
   const onSignUp = () => run(async () => {
     if (password.length < MIN_PASSWORD_LENGTH) throw new Error(`Use at least ${MIN_PASSWORD_LENGTH} characters for your password.`);
-    const { data, error } = await sb.auth.signUp({ email: email.trim(), password });
+    const { data, error } = await sb.auth.signUp({
+      email: email.trim(), password, options: { emailRedirectTo: `${window.location.origin}/app` },
+    });
     if (error) throw error;
     if (data.session) return; // Email confirmation is off in Supabase — already signed in.
     // Supabase hides whether an address is registered: an existing account comes back with no identities.
@@ -86,11 +99,16 @@ export default function SignIn() {
       throw new Error('An account with this email already exists. Sign in instead, or reset your password.');
     }
     go('verify');
-    setInfo(`We've sent a 6-digit code to ${email.trim()}. Enter it here to finish creating your account.`);
   });
 
+  // With a code: confirm it. Without: they tapped the link in the email — just sign in.
   const onVerify = () => run(async () => {
     const token = code.trim();
+    if (!token) {
+      const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
+      if (error) throw error;
+      return;
+    }
     let { error } = await sb.auth.verifyOtp({ email: email.trim(), token, type: 'email' });
     // Older Supabase projects issue signup confirmations under the 'signup' type.
     if (error) ({ error } = await sb.auth.verifyOtp({ email: email.trim(), token, type: 'signup' }));
@@ -98,13 +116,14 @@ export default function SignIn() {
   });
 
   const onForgot = () => run(async () => {
-    const { error } = await sb.auth.resetPasswordForEmail(email.trim());
+    const { error } = await sb.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/signin` });
     if (error) throw error;
     go('reset');
-    setInfo(`If there's an account for ${email.trim()}, we've sent it a 6-digit code.`);
   });
 
+  // Code route for resets. (The link route lands on 'newpassword' instead.)
   const onReset = () => run(async () => {
+    if (!code.trim()) throw new Error('Tap the link in the email we sent, or enter the code it shows.');
     if (password.length < MIN_PASSWORD_LENGTH) throw new Error(`Use at least ${MIN_PASSWORD_LENGTH} characters for your new password.`);
     // A code is single-use: if it already worked and only the password update failed, don't re-verify.
     const { data: current } = await sb.auth.getSession();
@@ -114,41 +133,57 @@ export default function SignIn() {
     }
     const { error: uErr } = await sb.auth.updateUser({ password });
     if (uErr) throw uErr;
-    setMode('signin'); // lets the effect above redirect now that the password is set
+    finishPasswordChange();
   });
 
-  const resendCode = () => run(async () => {
-    const { error } = mode === 'reset'
-      ? await sb.auth.resetPasswordForEmail(email.trim())
-      : await sb.auth.resend({ type: 'signup', email: email.trim() });
+  const onNewPassword = () => run(async () => {
+    if (password.length < MIN_PASSWORD_LENGTH) throw new Error(`Use at least ${MIN_PASSWORD_LENGTH} characters for your new password.`);
+    const { error } = await sb.auth.updateUser({ password });
     if (error) throw error;
-    setInfo('New code sent — it can take a minute to arrive. Check spam too.');
+    finishPasswordChange();
+  });
+
+  const resend = () => run(async () => {
+    const { error } = mode === 'reset'
+      ? await sb.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/signin` })
+      : await sb.auth.resend({ type: 'signup', email: email.trim(), options: { emailRedirectTo: `${window.location.origin}/app` } });
+    if (error) throw error;
+    setInfo('Sent again — it can take a minute to arrive. Check spam too.');
   });
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (busy) return;
-    ({ signin: onSignIn, signup: onSignUp, verify: onVerify, forgot: onForgot, reset: onReset })[mode]();
+    ({ signin: onSignIn, signup: onSignUp, verify: onVerify, forgot: onForgot, reset: onReset, newpassword: onNewPassword })[mode]();
   };
 
+  const who = email.trim() || 'your email';
   const titles: Record<Mode, [string, string]> = {
     signin: ['Sign in', 'Welcome back. Your cards and logged spend will be here on any device you sign in from.'],
     signup: ['Create your account', 'Save your cards and spending across devices. Everything you already added on this device can come with you.'],
-    verify: ['Check your email', 'Enter the 6-digit code we emailed you.'],
-    forgot: ['Reset your password', "Enter your account email and we'll send you a 6-digit code."],
-    reset: ['Set a new password', 'Enter the code from your email and choose a new password.'],
+    verify: ['Confirm your email', `We've emailed ${who}. Tap the link in that email, then come back here and press the button below. If the email shows a 6-digit code instead, enter it.`],
+    forgot: ['Reset your password', "Enter your account email and we'll send you a way to set a new one."],
+    reset: ['Check your email', `If there's an account for ${who}, we've emailed it. Tap the link to choose a new password — or, if the email shows a 6-digit code, enter it here with your new password.`],
+    newpassword: ['Choose a new password', "You're verified. Set a new password to finish — you'll use it to sign in from now on."],
   };
   const needsEmail = mode === 'signin' || mode === 'signup' || mode === 'forgot';
-  const needsPassword = mode === 'signin' || mode === 'signup' || mode === 'reset';
+  const needsPassword = mode === 'signin' || mode === 'signup' || mode === 'reset' || mode === 'newpassword';
   const needsCode = mode === 'verify' || mode === 'reset';
-  const cta: Record<Mode, string> = { signin: 'Sign in', signup: 'Create account', verify: 'Confirm', forgot: 'Send code', reset: 'Set password and sign in' };
+  const cta: Record<Mode, string> = {
+    signin: 'Sign in',
+    signup: 'Create account',
+    verify: code.trim() ? 'Confirm code' : "I've confirmed — sign me in",
+    forgot: 'Send reset email',
+    reset: 'Set password and sign in',
+    newpassword: 'Save password',
+  };
 
   return (
     <div className="page-narrow">
       <div className="wrap">
         <div className="admin-topbar">
           <Link to="/" className="brand" style={{ color: 'inherit', textDecoration: 'none' }}>Card<span>pare</span></Link>
-          <Link className="back-link" to="/app">Continue without an account</Link>
+          {mode !== 'newpassword' && <Link className="back-link" to="/app">Continue without an account</Link>}
         </div>
         <div className="kicker" />
 
@@ -162,11 +197,10 @@ export default function SignIn() {
               <input id="email" type="email" autoComplete="email" inputMode="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </>
           )}
-          {!needsEmail && <p className="hint" style={{ marginTop: 0 }}>Code sent to <b>{email}</b>.</p>}
 
           {needsCode && (
             <>
-              <label className="field-label" htmlFor="code">6-digit code</label>
+              <label className="field-label" htmlFor="code">6-digit code {mode === 'verify' ? '(only if your email shows one)' : '(if your email shows one)'}</label>
               <input id="code" className="code" type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={10}
                 value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} />
             </>
@@ -174,7 +208,7 @@ export default function SignIn() {
 
           {needsPassword && (
             <>
-              <label className="field-label" htmlFor="password">{mode === 'reset' ? 'New password' : 'Password'}</label>
+              <label className="field-label" htmlFor="password">{mode === 'reset' || mode === 'newpassword' ? 'New password' : 'Password'}</label>
               <input id="password" type={showPassword ? 'text' : 'password'} required
                 autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
                 value={password} onChange={(e) => setPassword(e.target.value)} />
@@ -187,7 +221,7 @@ export default function SignIn() {
           )}
 
           <button className="btn accent" type="submit" disabled={busy}>{busy ? 'One moment…' : cta[mode]}</button>
-          {error && <div className="msg err" role="alert">{error}</div>}
+          {(error || linkNotice) && <div className="msg err" role="alert">{error ?? linkNotice}</div>}
           {info && !error && <div className="msg" role="status">{info}</div>}
 
           <div className="auth-links">
@@ -198,7 +232,7 @@ export default function SignIn() {
             {mode === 'signup' && <button type="button" className="link-btn" onClick={() => go('signin')}>Already have an account? Sign in</button>}
             {mode === 'forgot' && <button type="button" className="link-btn" onClick={() => go('signin')}>Back to sign in</button>}
             {needsCode && <>
-              <button type="button" className="link-btn" disabled={busy} onClick={resendCode}>Send a new code</button>
+              <button type="button" className="link-btn" disabled={busy} onClick={resend}>Send the email again</button>
               <button type="button" className="link-btn" onClick={() => go(mode === 'reset' ? 'forgot' : 'signup')}>Use a different email</button>
             </>}
           </div>
