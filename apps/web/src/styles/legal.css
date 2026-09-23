@@ -1,0 +1,12 @@
+/* Scoped from the legacy privacy.html / terms.html. Every selector is prefixed with the page class so
+   pages can't restyle each other now that they share one app. */
+.page-legal .wrap{max-width:680px;margin:0 auto;padding:50px 22px 70px;}
+.page-legal a{color:var(--accent);}
+.page-legal .brand{font-family:'Fraunces',serif;font-weight:700;font-size:1.2rem;margin-bottom:30px;}
+.page-legal .brand span{color:var(--accent);}
+.page-legal h1{font-family:'Fraunces',serif;font-weight:500;font-size:1.8rem;letter-spacing:-0.015em;margin:0 0 8px;}
+.page-legal .updated{color:var(--ink-soft);font-size:0.82rem;margin-bottom:32px;}
+.page-legal h2{font-family:'Fraunces',serif;font-weight:500;font-size:1.15rem;margin:32px 0 10px;}
+.page-legal p, .page-legal li{font-size:0.92rem;line-height:1.65;color:var(--ink);}
+.page-legal ul{padding-left:20px;}
+.page-legal .note{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;font-size:0.85rem;color:var(--ink-soft);margin-bottom:30px;}

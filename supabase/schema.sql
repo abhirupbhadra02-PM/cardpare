@@ -185,3 +185,25 @@ create policy "waitlist: public insert" on public.waitlist
 drop policy if exists "waitlist: admin read" on public.waitlist;
 create policy "waitlist: admin read" on public.waitlist
   for select using (auth.jwt() ->> 'email' = 'abhirup.bhadra02@gmail.com');
+
+-- ============================================================================
+-- ADMIN: SIGN-UP COUNT (also shipped as migrations/2026-09-23_admin_user_count.sql)
+-- ============================================================================
+-- Counts auth.users directly so the admin number can't drift from reality.
+-- Only the admin email may call it.
+
+create or replace function public.admin_user_count()
+returns bigint
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if coalesce(auth.jwt() ->> 'email', '') <> 'abhirup.bhadra02@gmail.com' then
+    raise exception 'not authorized' using errcode = '42501';
+  end if;
+  return (select count(*) from auth.users);
+end;
+$$;
+
+revoke all on function public.admin_user_count() from public, anon;
+grant execute on function public.admin_user_count() to authenticated;

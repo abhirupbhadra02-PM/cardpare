@@ -1,0 +1,17 @@
+{
+  "name": "cardpare",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @cardpare/web",
+    "build": "npm run typecheck -w @cardpare/core && npm run test -w @cardpare/core && npm run build -w @cardpare/web",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

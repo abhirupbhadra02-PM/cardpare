@@ -1,0 +1,11 @@
+/* Design system — see CLAUDE.md. One accent, hairline borders, generous whitespace. */
+:root{
+  --bg:#F6F6F3; --surface:#FFFFFF; --line:#E7E6E0;
+  --ink:#14161A; --ink-soft:#6B6F76;
+  --accent:#2F5D50; --accent-soft:#E3ECE8;
+  --warn:#A8402F; --warn-soft:#F5E7E3;
+  --amber:#9A6A1E; --amber-soft:#F3E8D5;
+  --radius:12px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
