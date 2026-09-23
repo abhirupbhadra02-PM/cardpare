@@ -33,7 +33,7 @@ Cardpare is a credit card planning and audit tool for the Indian market. It tell
 - **Signed in:** the same state loads from and saves to Supabase through `packages/core/src/cloud.ts`. On first sign-in, if the browser has data and the account has none, the user is offered an import.
 - Writes that fail show an error instead of pretending to save.
 - Card requests and the waitlist are public, shared Supabase tables, whether or not you're signed in. Votes go through the `adjust_card_request_votes` function, not direct updates.
-- Auth: email + password. Confirming a new account and resetting a password use **6-digit emailed codes, not links** — links open a browser instead of the installed home-screen app. Requires the Supabase email templates to include `{{ .Token }}` (see README).
+- Auth: email + password. Confirming a new account and resetting a password accept **either** an emailed link (Supabase's built-in templates) **or** a 6-digit code (custom templates with `{{ .Token }}`, which need custom SMTP — see README). Codes are preferred: links open a browser instead of the installed home-screen app. Reset links can land on any page; `AuthLinkRedirect` in `App.tsx` sends them to `/signin` for "Choose a new password".
 - Admin (`/admin`) is gated in the database: RLS policies and `admin_user_count()` check the signed-in JWT email. The admin email lives in `core/src/config.ts` **and** in the SQL — change both together.
 - The old "runs inside Claude's artifact viewer" mode (`window.storage`) no longer exists; the app is a normal website now.
 

@@ -1,5 +1,6 @@
-import { lazy, Suspense } from 'react';
-import { Navigate, Route, Routes } from 'react-router';
+import { lazy, Suspense, useEffect } from 'react';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
+import { useAuth } from './auth/AuthProvider';
 import { AppDataProvider } from './data/AppDataProvider';
 
 // Each page loads on demand, so the landing page doesn't download the whole app.
@@ -17,9 +18,22 @@ const SignIn = lazy(() => import('./pages/auth/SignIn'));
 const Privacy = lazy(() => import('./pages/legal/Legal').then((m) => ({ default: m.Privacy })));
 const Terms = lazy(() => import('./pages/legal/Legal').then((m) => ({ default: m.Terms })));
 
+// Email links can land on any page (Supabase falls back to the Site URL); send
+// password-reset and expired-link arrivals to the sign-in page to finish up.
+function AuthLinkRedirect() {
+  const { passwordRecovery, linkError } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => {
+    if ((passwordRecovery || linkError) && location.pathname !== '/signin') navigate('/signin', { replace: true });
+  }, [passwordRecovery, linkError, location.pathname, navigate]);
+  return null;
+}
+
 export default function App() {
   return (
     <Suspense fallback={null}>
+      <AuthLinkRedirect />
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/app" element={<AppDataProvider><AppLayout /></AppDataProvider>}>
