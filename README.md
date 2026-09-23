@@ -26,14 +26,16 @@ Vercel deploys from GitHub automatically; `vercel.json` tells it how to build (n
 Do each step once, in the Supabase dashboard for the project.
 
 1. **Database.** In SQL Editor, run `supabase/schema.sql` (already done), then each file in `supabase/migrations/`, oldest first.
-2. **Sign-in codes instead of links.** Go to Authentication → Emails (Templates). In **Confirm signup** and **Reset password**, replace the link with the code, for example: `Your Cardpare code is {{ .Token }}`. Without this step, people get a link instead of a 6-digit code.
-3. **Email confirmation.** Authentication → Providers (or Sign In / Providers) → Email: keep **Confirm email** on and **email provider** enabled.
-4. **Sending real email.** Supabase's built-in email sender is meant for testing. It's heavily rate-limited and, as far as I know, only delivers to your own team's addresses. Before inviting real users, connect your own email provider under Authentication → SMTP Settings (e.g. Resend, Postmark, Amazon SES).
-5. **URL configuration.** Authentication → URL Configuration: set Site URL to your live domain.
+2. **URL configuration.** Authentication → URL Configuration: set **Site URL** to your live address. Under **Redirect URLs** add your live address followed by `/**`, and `https://*.vercel.app/**`, so email links also work on Vercel previews.
+3. **Email confirmation.** Authentication → Sign In / Providers → Email: keep **Confirm email** on.
+4. **Your own email sender (before inviting real users).** Supabase's built-in sender is meant for testing. It's heavily rate-limited and, as far as I know, only delivers to your own team's addresses. Connect a provider under Authentication → SMTP Settings (e.g. Resend, Postmark, Amazon SES). This needs a domain you own.
+5. **Codes instead of links (after step 4).** Supabase only lets you edit email templates once custom SMTP is on. Then, in Authentication → Emails → Templates, change **Confirm signup** and **Reset password** to include the code, e.g. `Your Cardpare code is {{ .Token }}`.
+
+The app works with either kind of email. With Supabase's standard emails, people get a link: tapping it confirms the account or opens "Choose a new password". After step 5 they get a 6-digit code to type in, so nothing ever opens a browser outside the home-screen app. Signing in is always email + password, so the installed app stays signed in either way.
 
 ## Before launch — checklist
 - [ ] Replace the "insert contact email at launch" placeholders and dates in the privacy and terms pages (`apps/web/src/pages/legal/Legal.tsx`), and have a lawyer review both.
-- [ ] Custom SMTP set up in Supabase (step 4 above).
+- [ ] Custom SMTP set up in Supabase (step 4 above), then the code templates (step 5).
 - [ ] Open the site on an actual phone, install it to the home screen, and sign in there.
 - [ ] Check the `verified` date on each card.
 
